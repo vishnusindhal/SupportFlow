@@ -10,6 +10,10 @@ foundations, and V2 provides versioned industry-template onboarding.
 docker compose up --build
 ```
 
+If PyPI is temporarily slow during the image build, rerun the same command;
+the backend pip install is configured with retries and a longer download
+timeout.
+
 The API is available at `http://localhost:8000/docs` and the frontend at
 `http://localhost:5173`.
 
