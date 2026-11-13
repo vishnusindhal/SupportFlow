@@ -1,0 +1,23 @@
+[
+  {"question":"How long does standard delivery take?","supported":true,"expected_source":"policies/shipping.md"},
+  {"question":"How soon does Northstar dispatch orders?","supported":true,"expected_source":"policies/shipping.md"},
+  {"question":"What are your support hours?","supported":true,"expected_source":"policies/shipping.md"},
+  {"question":"How many days do I have to return an item?","supported":true,"expected_source":"policies/returns.md"},
+  {"question":"Can I return an unused item?","supported":true,"expected_source":"policies/returns.md"},
+  {"question":"How are approved returns refunded?","supported":true,"expected_source":"policies/returns.md"},
+  {"question":"How long does a refund normally take?","supported":true,"expected_source":"policies/returns.md"},
+  {"question":"Can I cancel before warehouse processing?","supported":true,"expected_source":"policies/cancellations-and-damage.md"},
+  {"question":"What do I do if my item arrives damaged?","supported":true,"expected_source":"policies/cancellations-and-damage.md"},
+  {"question":"How quickly must I report damage?","supported":true,"expected_source":"policies/cancellations-and-damage.md"},
+  {"question":"Do I need photographs for a damaged-item claim?","supported":true,"expected_source":"policies/cancellations-and-damage.md"},
+  {"question":"Is support open on weekdays?","supported":true,"expected_source":"policies/shipping.md"},
+  {"question":"What is the return policy for original packaging?","supported":true,"expected_source":"policies/returns.md"},
+  {"question":"Can I get a refund to a different card?","supported":false,"expected_behavior":"safe_fallback"},
+  {"question":"Where is my specific order right now?","supported":false,"expected_behavior":"safe_fallback"},
+  {"question":"Can you change my account email?","supported":false,"expected_behavior":"safe_fallback"},
+  {"question":"What payment methods do you accept?","supported":false,"expected_behavior":"safe_fallback"},
+  {"question":"Can you issue my refund immediately?","supported":false,"expected_behavior":"safe_fallback"},
+  {"question":"What is your international customs charge?","supported":false,"expected_behavior":"safe_fallback"},
+  {"question":"Can you apply a discount to my order?","supported":false,"expected_behavior":"safe_fallback"}
+]
+
