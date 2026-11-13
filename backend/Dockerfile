@@ -5,4 +5,4 @@ RUN pip install --no-cache-dir --disable-pip-version-check --default-timeout=180
 COPY app app
 COPY alembic alembic
 COPY alembic.ini .
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "until alembic upgrade head; do echo 'Database not ready; retrying migrations...'; sleep 3; done; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
