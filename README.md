@@ -1,8 +1,8 @@
 # SupportFlow AI
 
 SupportFlow is a multi-tenant customer-support platform. V0 defines the
-Northstar Store prototype contract and V1 provides authentication,
-organizations, memberships, RBAC, and tenant-safe API foundations.
+Northstar Store prototype contract, V1 provides authentication and tenant-safe
+foundations, and V2 provides versioned industry-template onboarding.
 
 ## Local development
 
@@ -24,6 +24,6 @@ alembic upgrade head
 pytest
 ```
 
-AI, RAG, LangChain, pgvector, and external integrations are intentionally
-deferred until later versions.
-
+V2 onboarding creates a tenant-owned configuration snapshot from the
+Northstar Store e-commerce template. AI, RAG, LangChain, pgvector, and
+external integrations are intentionally deferred until later versions.
