@@ -7,6 +7,11 @@ services:
       POSTGRES_PASSWORD: supportflow
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportflow -d supportflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     volumes:
       - postgres_data:/var/lib/postgresql/data
   backend:
@@ -18,7 +23,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
   frontend:
     build: ./frontend
     environment:
@@ -29,4 +35,3 @@ services:
       - backend
 volumes:
   postgres_data:
-

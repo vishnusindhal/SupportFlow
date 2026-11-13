@@ -5,7 +5,48 @@ import ProtectedRoute from "../auth/ProtectedRoute";
 
 function Login() {
   const { signIn } = useAuth();
-  return <main className="card"><h1>SupportFlow</h1><p>Sign in to your organization workspace.</p><button onClick={() => signIn({ accessToken: "local-demo", email: "demo@northstar.test", organizationId: "demo" })}>Sign in to demo</button></main>;
+  const navigate = useNavigate();
+  const [message, setMessage] = useState("");
+  async function signInToDemo() {
+    const base = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+    const credentials = {
+      organization_name: "Northstar Store",
+      organization_slug: "northstar-demo",
+      email: "demo@northstar.example",
+      display_name: "Demo Owner",
+      password: "correct horse battery",
+    };
+    try {
+      let response = await fetch(`${base}/api/v1/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(credentials),
+      });
+      if (response.status === 409) {
+        response = await fetch(`${base}/api/v1/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+        });
+      }
+      if (!response.ok) {
+        setMessage("Demo sign-in failed. Check that the backend is running.");
+        return;
+      }
+      const body = await response.json();
+      signIn({
+        accessToken: body.access_token,
+        email: body.user.email,
+        organizationId: body.membership.organization_id,
+      });
+      navigate("/");
+    } catch {
+      setMessage("Demo sign-in failed. Check that the backend is running.");
+    }
+  }
+  return <main className="card"><h1>SupportFlow</h1><p>Sign in to your organization workspace.</p><button onClick={signInToDemo}>Sign in to demo</button>{message && <p role="alert">{message}</p>}</main>;
 }
 
 function Shell() {
