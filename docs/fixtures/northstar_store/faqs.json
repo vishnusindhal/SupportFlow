@@ -1,0 +1,8 @@
+[
+  {"question":"How long does delivery take?","answer":"Dispatch is within two business days and delivery usually takes three to five business days after dispatch.","source":"policies/shipping.md"},
+  {"question":"What is the return window?","answer":"Returns may be requested within 30 calendar days of delivery for unused items in original packaging.","source":"policies/returns.md"},
+  {"question":"When is a refund issued?","answer":"Approved returns are refunded to the original payment method after inspection, normally within five business days.","source":"policies/returns.md"},
+  {"question":"Can I cancel my order?","answer":"An order can be cancelled before it enters warehouse processing.","source":"policies/cancellations-and-damage.md"},
+  {"question":"What should I do about a damaged item?","answer":"Contact support within seven days with photographs and the order number.","source":"policies/cancellations-and-damage.md"}
+]
+
