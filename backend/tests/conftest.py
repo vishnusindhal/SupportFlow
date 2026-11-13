@@ -7,14 +7,19 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.db.base import Base
-from app.db.session import engine
+from app.db.session import SessionLocal, engine
+from app.fixtures import NORTHSTAR_TEMPLATE
 from app.main import app
+from app.models import IndustryTemplate
 
 
 @pytest.fixture(autouse=True)
 def reset_db():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    with SessionLocal() as db:
+        db.add(IndustryTemplate(industry_key="ecommerce", version=1, display_name="Northstar Store", config_json=NORTHSTAR_TEMPLATE, is_active=True))
+        db.commit()
     yield
     Base.metadata.drop_all(engine)
 
