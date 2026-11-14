@@ -124,6 +124,7 @@ function KnowledgeBase() {
       method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ query }),
     });
     if (response.ok) setResults(await response.json());
+    else setMessage("Retrieval failed. Check that the backend and database are running.");
   }
   return <section className="card"><h1>Knowledge base</h1><p>Upload private company content for tenant-scoped retrieval.</p><input type="file" accept=".pdf,.docx,.txt" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><button onClick={upload}>Upload and process</button><h2>Documents</h2>{documents.map((document) => <p key={document.id}>{document.original_filename} — {document.status}{document.error_code && ` (${document.error_code})`}</p>)}<h2>Test retrieval</h2><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ask about your documents" /><button onClick={retrieve}>Retrieve</button>{results.map((result) => <article key={`${result.metadata.source_filename}-${result.score}`}><strong>{result.metadata.source_filename}</strong><p>{result.content}</p></article>)}{message && <p role="status">{message}</p>}</section>;
 }
