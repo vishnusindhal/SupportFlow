@@ -68,3 +68,26 @@ def test_invalid_file_is_rejected(client):
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "unsupported_file_type"
+
+
+def test_retrieval_prefers_relevant_chunk_in_long_document(client):
+    session = register(client, "company-d", "knowledge-e@example.com")
+    content = (
+        " ".join(["unrelated background"] * 100)
+        + " Eventopia is an event discovery platform for finding and publishing campus events. "
+        + " ".join(["more unrelated background"] * 100)
+    )
+    response = client.post(
+        "/api/v1/knowledge/documents",
+        headers=headers(session),
+        files={"file": ("resume.txt", content.encode(), "text/plain")},
+    )
+    assert response.status_code == 201
+    results = client.post(
+        "/api/v1/knowledge/retrieve",
+        headers=headers(session),
+        json={"query": "What is Eventopia?", "top_k": 1},
+    )
+    assert results.status_code == 200
+    assert "event discovery platform" in results.json()[0]["content"]
+    assert len(results.json()[0]["content"].split()) <= 45
