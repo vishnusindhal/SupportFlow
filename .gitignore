@@ -7,6 +7,7 @@ __pycache__/
 node_modules/
 dist/
 uploads/
+.docker-cache/
 *.db
 
 *.egg-info/

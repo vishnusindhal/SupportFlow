@@ -13,7 +13,36 @@ docker compose up --build
 
 If PyPI is temporarily slow during the image build, rerun the same command;
 the backend pip install is configured with retries and a longer download
-timeout.
+timeout. Docker caches the dependency layers and package-manager downloads:
+editing application source only rebuilds the source-copy layer and later
+layers.
+
+For the fastest normal edit/reload loop, start the stack once and leave it
+running:
+
+```powershell
+docker compose up --build
+```
+
+After changing `backend/app`, `backend/alembic`, or `frontend/src`, rebuild
+only the changed service:
+
+```powershell
+docker compose build backend
+docker compose up -d backend
+
+docker compose build frontend
+docker compose up -d frontend
+```
+
+Dependency installation is cached until its lock/requirements file changes:
+
+- Backend: `backend/requirements-runtime.txt`
+- Frontend: `frontend/package.json` or `frontend/package-lock.json`
+
+Changing either dependency file intentionally invalidates the relevant install
+layer. The `.dockerignore` files exclude virtual environments, `node_modules`,
+build output, tests, uploads, and local databases from the build context.
 
 The API is available at `http://localhost:8000/docs` and the frontend at
 `http://localhost:5173`.
