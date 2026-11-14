@@ -93,6 +93,10 @@ did not pass, and how to check the result manually.
 For the detailed AI-agent architecture, version history, function flows, and
 database behavior, see [`ai-agent/README.md`](./ai-agent/README.md).
 
+For a version-by-version implementation explanation with request flows,
+validation, and manual checks, see the
+[Project Understanding](./project-understanding/README.md) folder.
+
 Commit messages use one concise imperative line without `feat`, `fix`, or
 `docs` prefixes and without a colon.
 
