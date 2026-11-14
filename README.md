@@ -128,6 +128,24 @@ $env:DATABASE_URL="postgresql+psycopg://supportflow:supportflow@localhost:5432/s
 alembic upgrade head
 ```
 
-V3 and later are not implemented yet. They will add document ingestion,
-retrieval, grounded chat, workflows, rules, tickets, integrations, and
-analytics incrementally.
+### V3 — Knowledge base and retrieval
+
+1. Sign in and open **Knowledge base**.
+2. Upload a `.txt`, `.pdf`, or `.docx` file.
+3. Verify the document status becomes `ready`.
+4. Enter a question in **Test retrieval** and confirm the returned passage
+   comes from the uploaded file.
+5. In the API docs, test the document list, detail, retry, delete, and
+   `POST /api/v1/knowledge/retrieve` endpoints.
+6. Register a second organization and verify it cannot retrieve the first
+   organization's content.
+
+V4 and later will add grounded chat, workflows, rules, tickets, integrations,
+and analytics incrementally.
+
+Run the V3 tests:
+
+```powershell
+cd backend
+pytest tests/test_knowledge.py -q
+```

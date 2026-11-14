@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 7
     cookie_secure: bool = False
+    uploads_dir: str = "uploads"
+    max_upload_size_bytes: int = 10_000_000
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -16,4 +18,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
