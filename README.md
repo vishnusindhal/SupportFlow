@@ -2,7 +2,8 @@
 
 SupportFlow is a multi-tenant customer-support platform. V0 defines the
 Northstar Store prototype contract, V1 provides authentication and tenant-safe
-foundations, and V2 provides versioned industry-template onboarding.
+foundations, V2 provides versioned industry-template onboarding, and V3
+provides a tenant-scoped knowledge base and retrieval prototype.
 
 ## Local development
 
@@ -29,8 +30,72 @@ pytest
 ```
 
 V2 onboarding creates a tenant-owned configuration snapshot from the
-Northstar Store e-commerce template. AI, RAG, LangChain, pgvector, and
-external integrations are intentionally deferred until later versions.
+Northstar Store e-commerce template. V3 adds document parsing, chunking,
+embeddings, and tenant-filtered retrieval. Grounded AI chat is deferred to V4.
+
+## Version implementation and validation record
+
+This section records what was implemented in each version, what passed, what
+did not pass, and how to check the result manually.
+
+| Version | Implemented | Automated validation | Known status |
+|---|---|---|---|
+| V0 | Northstar Store fixtures, policies, FAQs, evaluation questions, and UX contract | Fixture tests passed | Complete |
+| V1 | Registration/login, JWT access tokens, rotating refresh tokens, Argon2id passwords, organizations, memberships, RBAC, and tenant isolation | Authentication and tenant-isolation tests passed | Complete |
+| V2 | Versioned template registry, onboarding profile, immutable company configuration snapshot, duplicate protection, and onboarding UI | 8 backend tests passed; frontend build and lint passed | Complete |
+| V3 | PDF/DOCX/TXT upload, private storage keys, parsing, chunking, local embeddings, pgvector schema, tenant-scoped retrieval, retry/delete APIs, and Knowledge Base UI | 11 backend tests passed; Ruff passed; frontend build/lint passed; Compose config passed | Code verified; Docker image build is currently blocked by an external PyPI package hash mismatch |
+
+### Validation commands
+
+Run all backend tests:
+
+```powershell
+python -m pytest backend/tests -q
+```
+
+Expected result: `11 passed` (warnings about deprecated FastAPI startup and
+datetime APIs may be displayed).
+
+Run backend lint:
+
+```powershell
+python -m ruff check backend/app backend/tests
+```
+
+Expected result: `All checks passed!`.
+
+Run frontend checks:
+
+```powershell
+npm --prefix frontend run build
+npm --prefix frontend run lint
+```
+
+Expected result: the Vite build succeeds and ESLint reports no errors. The
+frontend lint command may show a Node module-type warning.
+
+Validate Compose:
+
+```powershell
+docker compose config
+```
+
+Expected result: the resolved Compose configuration is printed without an
+error.
+
+### Current Docker build issue
+
+The V3 application code and local tests pass, but Docker image rebuilding may
+fail while pip downloads large packages from PyPI. The observed failure was:
+`THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE`, followed by
+a pip installation exit code. This is a dependency-download/environment issue,
+not a failing application test. Retry the build when PyPI or the local package
+cache is stable:
+
+```powershell
+docker compose build backend
+docker compose up
+```
 
 ## Run and manually verify each version
 
@@ -48,6 +113,10 @@ Open:
 
 ### V0 — Scope and demo fixtures
 
+Implemented: fictional Northstar Store policies, FAQs, evaluation questions,
+and the screen-level UX contract. No database or AI service is required for
+V0.
+
 Review the fictional Northstar Store data in:
 
 - `docs/fixtures/northstar_store/policies/`
@@ -62,7 +131,13 @@ cd backend
 pytest tests/test_v0_fixtures.py -q
 ```
 
+Expected result: the fixture test passes.
+
 ### V1 — Authentication and tenant isolation
+
+Implemented: secure password hashing, access/refresh authentication,
+organization membership, role checks, authenticated organization context, and
+server-side tenant isolation.
 
 1. Open `http://localhost:5173`.
 2. Sign in to the demo shell.
@@ -83,7 +158,13 @@ cd backend
 pytest tests/test_auth.py tests/test_tenant_isolation.py -q
 ```
 
+Expected result: all selected V1 tests pass.
+
 ### V2 — Industry template and onboarding
+
+Implemented: one versioned e-commerce template, company profile setup,
+template preview/detail APIs, immutable tenant-owned configuration snapshots,
+duplicate-completion protection, and the onboarding page.
 
 1. Sign in at `http://localhost:5173/login`.
 2. Open **Onboarding**.
@@ -109,6 +190,8 @@ cd backend
 pytest tests/test_onboarding.py -q
 ```
 
+Expected result: the V2 onboarding tests pass.
+
 ### Database and migration check
 
 The PostgreSQL database starts through Docker Compose. To rebuild it from
@@ -130,6 +213,14 @@ alembic upgrade head
 
 ### V3 — Knowledge base and retrieval
 
+Implemented: supported PDF, DOCX, and TXT uploads; MIME/extension/size
+validation; opaque private storage keys; synchronous text extraction; roughly
+500-word chunks with overlap; 384-dimension local embeddings; PostgreSQL
+pgvector storage; tenant-filtered retrieval; retry/delete behavior; and the
+Knowledge Base page. The current embedding implementation is deterministic and
+local so V3 can be tested without an external AI provider. OpenAI and grounded
+chat are V4 work.
+
 1. Sign in and open **Knowledge base**.
 2. Upload a `.txt`, `.pdf`, or `.docx` file.
 3. Verify the document status becomes `ready`.
@@ -149,3 +240,17 @@ Run the V3 tests:
 cd backend
 pytest tests/test_knowledge.py -q
 ```
+
+Expected result: the three V3 knowledge tests pass. For API-only checking,
+use an authenticated token in `http://localhost:8000/docs` and test:
+
+- `POST /api/v1/knowledge/documents` with a PDF, DOCX, or TXT multipart file
+- `GET /api/v1/knowledge/documents`
+- `GET /api/v1/knowledge/documents/{id}`
+- `POST /api/v1/knowledge/documents/{id}/retry`
+- `DELETE /api/v1/knowledge/documents/{id}`
+- `POST /api/v1/knowledge/retrieve` with `{"query":"...", "top_k":5}`
+
+To confirm tenant isolation, upload a private phrase while signed in as
+Company A, sign in as Company B, retrieve using that phrase, and verify that
+the result list is empty.
