@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     gemini_timeout_seconds: float = 20.0
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Support both `python` from the repository root and `python` from backend.
+    # Docker receives these values from docker-compose.yml as environment vars.
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
 
 
 @lru_cache
