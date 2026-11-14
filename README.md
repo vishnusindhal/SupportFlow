@@ -18,8 +18,8 @@ Set at least:
 
 ```dotenv
 GEMINI_API_KEY=your-private-gemini-api-key
-GEMINI_MODEL=gemini-2.0-flash
-GEMINI_TIMEOUT_SECONDS=20
+GEMINI_MODEL=gemini-3.8-flash
+GEMINI_TIMEOUT_SECONDS=120
 JWT_SECRET_KEY=replace-with-a-long-random-secret
 ```
 
@@ -280,8 +280,8 @@ $env:GEMINI_API_KEY="your-key"
 docker compose up --build
 ```
 
-`GEMINI_MODEL` defaults to `gemini-2.0-flash` and
-`GEMINI_TIMEOUT_SECONDS` defaults to `20`. If the key is missing, Gemini
+`GEMINI_MODEL` defaults to `gemini-3.8-flash` and
+`GEMINI_TIMEOUT_SECONDS` defaults to `120`. If the key is missing, Gemini
 times out, or returns an error, the API stores a safe fallback response and
 never fabricates an answer.
 

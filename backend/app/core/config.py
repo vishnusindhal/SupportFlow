@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     uploads_dir: str = "uploads"
     max_upload_size_bytes: int = 10_000_000
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.0-flash"
-    gemini_timeout_seconds: float = 20.0
+    gemini_model: str = "gemini-3.8-flash"
+    gemini_timeout_seconds: float = 120.0
 
     # Support both `python` from the repository root and `python` from backend.
     # Docker receives these values from docker-compose.yml as environment vars.
