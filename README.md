@@ -93,6 +93,9 @@ did not pass, and how to check the result manually.
 For the detailed AI-agent architecture, version history, function flows, and
 database behavior, see [`ai-agent/README.md`](./ai-agent/README.md).
 
+Commit messages use one concise imperative line without `feat`, `fix`, or
+`docs` prefixes and without a colon.
+
 | Version | Implemented | Automated validation | Known status |
 |---|---|---|---|
 | V0 | Northstar Store fixtures, policies, FAQs, evaluation questions, and UX contract | Fixture tests passed | Complete |
