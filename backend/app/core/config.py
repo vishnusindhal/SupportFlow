@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     uploads_dir: str = "uploads"
     max_upload_size_bytes: int = 10_000_000
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_timeout_seconds: float = 20.0
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

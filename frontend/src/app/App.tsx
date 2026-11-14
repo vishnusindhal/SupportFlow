@@ -91,8 +91,21 @@ function Onboarding() {
   return <section className="card"><h1>Set up your workspace</h1><label>Company name<input value={companyName} onChange={(event) => setCompanyName(event.target.value)} /></label><h2>Choose an industry template</h2>{templates.map((template) => <label className="choice" key={template.id}><input type="radio" name="template" value={template.id} checked={selected === template.id} onChange={() => setSelected(template.id)} />{template.display_name} (v{template.version})</label>)}<button onClick={complete}>Confirm setup</button>{message && <p role="alert">{message}</p>}</section>;
 }
 
-function Placeholder({ title, text }: { title: string; text: string }) {
-  return <section className="card"><h1>{title}</h1><p>{text}</p></section>;
+function ChatPreview() {
+  const { session } = useAuth();
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<{ answer: string; sources: { document_name: string; excerpt: string }[] } | null>(null);
+  const [message, setMessage] = useState("");
+  async function ask() {
+    const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8000"}/api/v1/chat/preview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.accessToken}` },
+      body: JSON.stringify({ content: question }),
+    });
+    if (response.ok) { setAnswer(await response.json()); setMessage(""); }
+    else setMessage("Chat is unavailable. Check the backend and Gemini configuration.");
+  }
+  return <section className="card"><h1>Chat preview</h1><p>Ask a question grounded in your company knowledge.</p><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask a support question" /><button onClick={ask}>Ask assistant</button>{answer && <><h2>Answer</h2><p>{answer.answer}</p><h2>Sources</h2>{answer.sources.map((source) => <article key={`${source.document_name}-${source.excerpt}`}><strong>{source.document_name}</strong><p>{source.excerpt}</p></article>)}</>}{message && <p role="alert">{message}</p>}</section>;
 }
 
 function KnowledgeBase() {
@@ -130,5 +143,5 @@ function KnowledgeBase() {
 }
 
 export default function App() {
-  return <AuthProvider><Routes><Route path="/login" element={<Login />} /><Route element={<ProtectedRoute />}><Route path="/" element={<Shell />} /><Route path="/onboarding" element={<Onboarding />} /><Route path="/knowledge" element={<KnowledgeBase />} /><Route path="/chat" element={<Placeholder title="Chat preview" text="Grounded answers and sources will be implemented in V4." />} /></Route><Route path="*" element={<Navigate to="/" replace />} /></Routes></AuthProvider>;
+  return <AuthProvider><Routes><Route path="/login" element={<Login />} /><Route element={<ProtectedRoute />}><Route path="/" element={<Shell />} /><Route path="/onboarding" element={<Onboarding />} /><Route path="/knowledge" element={<KnowledgeBase />} /><Route path="/chat" element={<ChatPreview />} /></Route><Route path="*" element={<Navigate to="/" replace />} /></Routes></AuthProvider>;
 }
