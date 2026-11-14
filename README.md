@@ -23,8 +23,9 @@ GEMINI_TIMEOUT_SECONDS=20
 JWT_SECRET_KEY=replace-with-a-long-random-secret
 ```
 
-Never commit `.env` or paste its contents into GitHub. Docker Compose loads
-these values automatically. If `GEMINI_API_KEY` is empty, the app continues
+Never commit `.env` or paste its contents into GitHub. Docker Compose passes
+these values to the backend automatically, and backend local development reads
+the same root `.env` file. If `GEMINI_API_KEY` is empty, the app continues
 with the safe provider fallback instead of calling Gemini.
 
 ```powershell
