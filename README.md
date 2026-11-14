@@ -7,6 +7,26 @@ provides a tenant-scoped knowledge base and retrieval prototype.
 
 ## Local development
 
+Create or edit the root `.env` file before starting the project. It is
+ignored by Git and is intended for private values such as your Gemini API key:
+
+```powershell
+notepad .env
+```
+
+Set at least:
+
+```dotenv
+GEMINI_API_KEY=your-private-gemini-api-key
+GEMINI_MODEL=gemini-2.0-flash
+GEMINI_TIMEOUT_SECONDS=20
+JWT_SECRET_KEY=replace-with-a-long-random-secret
+```
+
+Never commit `.env` or paste its contents into GitHub. Docker Compose loads
+these values automatically. If `GEMINI_API_KEY` is empty, the app continues
+with the safe provider fallback instead of calling Gemini.
+
 ```powershell
 docker compose up --build
 ```
