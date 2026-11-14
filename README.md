@@ -72,7 +72,8 @@ did not pass, and how to check the result manually.
 | V0 | Northstar Store fixtures, policies, FAQs, evaluation questions, and UX contract | Fixture tests passed | Complete |
 | V1 | Registration/login, JWT access tokens, rotating refresh tokens, Argon2id passwords, organizations, memberships, RBAC, and tenant isolation | Authentication and tenant-isolation tests passed | Complete |
 | V2 | Versioned template registry, onboarding profile, immutable company configuration snapshot, duplicate protection, and onboarding UI | 8 backend tests passed; frontend build and lint passed | Complete |
-| V3 | PDF/DOCX/TXT upload, private storage keys, parsing, chunking, local embeddings, pgvector schema, tenant-scoped retrieval, retry/delete APIs, and Knowledge Base UI | 11 backend tests passed; Ruff passed; frontend build/lint passed; Compose config passed | Code verified; Docker image build is currently blocked by an external PyPI package hash mismatch |
+| V3 | PDF/DOCX/TXT upload, private storage keys, parsing, chunking, local embeddings, pgvector schema, tenant-scoped retrieval, retry/delete APIs, and Knowledge Base UI | 11 backend tests passed; Ruff passed; frontend build/lint passed; Compose config passed | Complete |
+| V4 | Tenant-scoped conversations, persisted messages and LLM usage, Gemini provider adapter, grounded answers with source citations, safe provider/evidence fallbacks, and admin chat preview | 3 V4 chat tests passed; Ruff passed; frontend build passed | Complete; Gemini key is optional and fallback behavior is expected without it |
 
 ### Validation commands
 
@@ -82,7 +83,7 @@ Run all backend tests:
 python -m pytest backend/tests -q
 ```
 
-Expected result: `11 passed` (warnings about deprecated FastAPI startup and
+Expected result: all backend tests pass (warnings about deprecated FastAPI startup and
 datetime APIs may be displayed).
 
 Run backend lint:
@@ -111,20 +112,6 @@ docker compose config
 
 Expected result: the resolved Compose configuration is printed without an
 error.
-
-### Current Docker build issue
-
-The V3 application code and local tests pass, but Docker image rebuilding may
-fail while pip downloads large packages from PyPI. The observed failure was:
-`THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE`, followed by
-a pip installation exit code. This is a dependency-download/environment issue,
-not a failing application test. Retry the build when PyPI or the local package
-cache is stable:
-
-```powershell
-docker compose build backend
-docker compose up
-```
 
 ## Run and manually verify each version
 
@@ -262,8 +249,46 @@ chat are V4 work.
 6. Register a second organization and verify it cannot retrieve the first
    organization's content.
 
-V4 and later will add grounded chat, workflows, rules, tickets, integrations,
-and analytics incrementally.
+### V4 — Grounded AI chat
+
+V4 adds a server-side Gemini adapter. The browser never receives the Gemini
+API key. Set the key before starting Docker for live answers:
+
+```powershell
+$env:GEMINI_API_KEY="your-key"
+docker compose up --build
+```
+
+`GEMINI_MODEL` defaults to `gemini-2.0-flash` and
+`GEMINI_TIMEOUT_SECONDS` defaults to `20`. If the key is missing, Gemini
+times out, or returns an error, the API stores a safe fallback response and
+never fabricates an answer.
+
+Manual check:
+
+1. Sign in and upload a document containing a known company fact.
+2. Open **Chat preview**.
+3. Ask a question answered by that document.
+4. Verify the response includes source excerpts from the uploaded document.
+5. Ask an unrelated question and verify the response says there is not enough
+   company information or that the provider is unavailable.
+6. Put instruction-like text in a document and verify it is treated as quoted
+   evidence, not as an instruction to the assistant.
+7. In the API docs, verify:
+   - `POST /api/v1/chat/conversations`
+   - `GET /api/v1/chat/conversations/{id}/messages`
+   - `POST /api/v1/chat/conversations/{id}/messages`
+   - `POST /api/v1/chat/preview`
+
+Run the V4 tests:
+
+```powershell
+python -m pytest backend/tests/test_chat.py -q
+```
+
+Expected result: `3 passed`. With no Gemini key, provider fallback is the
+expected result; with a valid key, grounded questions should return a Gemini
+answer and citations.
 
 Run the V3 tests:
 

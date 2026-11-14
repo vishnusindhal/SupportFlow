@@ -44,6 +44,25 @@ def split_text(text: str, chunk_words: int = 120, overlap_words: int = 20) -> li
     return chunks
 
 
+def lexical_score(query: str, content: str) -> float:
+    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
+    content_terms = set(re.findall(r"[a-z0-9]+", content.lower()))
+    if not query_terms:
+        return 0.0
+    return len(query_terms & content_terms) / len(query_terms)
+
+
+def relevant_excerpt(query: str, content: str, window_words: int = 45) -> str:
+    words = content.split()
+    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
+    for index, word in enumerate(words):
+        terms = re.findall(r"[a-z0-9]+", word.lower())
+        if terms and terms[0] in query_terms:
+            start = max(0, index - window_words // 2)
+            return " ".join(words[start : min(len(words), start + window_words)])
+    return content
+
+
 async def save_upload(upload: UploadFile) -> tuple[Path, str, int]:
     suffix = Path(upload.filename or "").suffix.lower()
     if suffix not in ALLOWED_TYPES or upload.content_type != ALLOWED_TYPES[suffix]:
