@@ -94,7 +94,7 @@ function Onboarding() {
 function ChatPreview() {
   const { session } = useAuth();
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState<{ answer: string; sources: { document_name: string; excerpt: string }[] } | null>(null);
+  const [answer, setAnswer] = useState<{ answer: string; sources: { chunk_id: string; document_name: string; excerpt: string }[] } | null>(null);
   const [message, setMessage] = useState("");
   async function ask() {
     const response = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8000"}/api/v1/chat/preview`, {
@@ -105,7 +105,7 @@ function ChatPreview() {
     if (response.ok) { setAnswer(await response.json()); setMessage(""); }
     else setMessage("Chat is unavailable. Check the backend and Gemini configuration.");
   }
-  return <section className="card"><h1>Chat preview</h1><p>Ask a question grounded in your company knowledge.</p><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask a support question" /><button onClick={ask}>Ask assistant</button>{answer && <><h2>Answer</h2><p>{answer.answer}</p><h2>Sources</h2>{answer.sources.map((source) => <article key={`${source.document_name}-${source.excerpt}`}><strong>{source.document_name}</strong><p>{source.excerpt}</p></article>)}</>}{message && <p role="alert">{message}</p>}</section>;
+  return <section className="card"><h1>Chat preview</h1><p>Ask a question grounded in your company knowledge.</p><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask a support question" /><button onClick={ask}>Ask assistant</button>{answer && <><h2>Answer</h2><p>{answer.answer}</p><h2>Sources</h2>{answer.sources.map((source) => <article key={source.chunk_id}><strong>{source.document_name}</strong><p>{source.excerpt}</p></article>)}</>}{message && <p role="alert">{message}</p>}</section>;
 }
 
 function KnowledgeBase() {
