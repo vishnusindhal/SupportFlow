@@ -14,6 +14,8 @@ class Conversation(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
     channel: Mapped[str] = mapped_column(String(30), default="admin_preview")
     status: Mapped[str] = mapped_column(String(30), default="active")
+    current_state: Mapped[str] = mapped_column(String(80), default="start")
+    context_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
@@ -27,6 +29,9 @@ class Message(Base):
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    intent: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    entities: Mapped[dict] = mapped_column(JSON, default=dict)
+    sentiment: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 

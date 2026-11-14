@@ -5,7 +5,7 @@ built, and how the main functions work together.
 
 ## Current implementation status
 
-SupportFlow is currently implemented through **V4**:
+SupportFlow is currently implemented through **V5**:
 
 | Version | Status | Main capability |
 |---|---|---|
@@ -14,7 +14,8 @@ SupportFlow is currently implemented through **V4**:
 | V2 | Complete | Industry templates and company onboarding |
 | V3 | Complete | Private knowledge uploads, parsing, chunking, embeddings, and retrieval |
 | V4 | Complete | Grounded Gemini chat with citations and safe fallbacks |
-| V5+ | Not started | Workflows, rules, tickets, integrations, and analytics |
+| V5 | Complete | Configurable conversation flows and deterministic intent handling |
+| V6+ | Not started | Business rules, tickets, integrations, and analytics |
 
 The current AI behavior is intentionally controlled. The system does not run
 autonomous agents, execute SQL or shell commands, call arbitrary tools, or
@@ -146,6 +147,30 @@ fallback and offers human support.
 The Gemini API key is loaded from the local root `.env` and is never sent to
 the browser. Docker Compose passes it to the backend container.
 
+### V5 — Configurable conversation flow and intent handling
+
+V5 adds a tenant-configurable finite-state machine around V4 chat:
+
+1. An owner/admin saves a strict JSON flow through
+   `PUT /api/v1/flows/current`.
+2. The flow defines an initial state, prompts, menu options, allowed
+   transitions, and terminal-state flags.
+3. New conversations start in the configured initial state.
+4. A message is checked against the current state's menu options first.
+5. Global intents (`help`, `restart`, and `talk_to_agent`) are available from
+   every state.
+6. Order IDs are extracted only with a constrained pattern such as
+   `ORD-1234`.
+7. Menu and global-intent responses are deterministic and do not call Gemini.
+8. Other questions use the existing tenant-scoped RAG path and preserve the
+   conversation state.
+9. Current state, context, intent, and entities are persisted with the
+   conversation/message records.
+
+The flow JSON is validated with Pydantic. Unknown fields and transitions to
+undefined states are rejected. User flow configuration is data only; it is
+never executed as Python, SQL, or shell code.
+
 ## Chat function flow
 
 ### Frontend
@@ -196,6 +221,7 @@ the browser. Docker Compose passes it to the backend container.
 - `conversations`: tenant-owned chat sessions.
 - `messages`: user and assistant messages.
 - `llm_usage`: provider, model, latency, outcome, and retrieval audit data.
+- `conversation_flows`: versioned tenant-owned state-machine configuration.
 
 ## Local setup
 
@@ -231,6 +257,18 @@ Open:
 7. Check that the browser never contains the Gemini API key.
 8. Register another organization and confirm it cannot retrieve the first
    organization's documents or conversations.
+
+## Manual V5 verification
+
+1. Save a flow with `PUT /api/v1/flows/current`.
+2. Start a conversation and select a configured menu option.
+3. Verify `intent`, `current_state`, and `action` in the response.
+4. Test `help`, `restart`, and `I want to talk to a human` from different
+   states.
+5. Test missing and valid order IDs.
+6. Ask a knowledge question during a menu flow and verify state is retained.
+7. Register a second organization and verify it cannot read or change the
+   first organization's flow.
 
 ## Automated verification
 
