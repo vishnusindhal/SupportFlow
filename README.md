@@ -81,7 +81,8 @@ pytest
 
 V2 onboarding creates a tenant-owned configuration snapshot from the
 Northstar Store e-commerce template. V3 adds document parsing, chunking,
-embeddings, and tenant-filtered retrieval. Grounded AI chat is deferred to V4.
+embeddings, and tenant-filtered retrieval. V4 adds grounded AI chat, and V5
+adds configurable conversation flows and deterministic intent routing.
 
 ## Version implementation and validation record
 
@@ -98,6 +99,7 @@ database behavior, see [`ai-agent/README.md`](./ai-agent/README.md).
 | V2 | Versioned template registry, onboarding profile, immutable company configuration snapshot, duplicate protection, and onboarding UI | 8 backend tests passed; frontend build and lint passed | Complete |
 | V3 | PDF/DOCX/TXT upload, private storage keys, parsing, chunking, local embeddings, pgvector schema, tenant-scoped retrieval, retry/delete APIs, and Knowledge Base UI | 11 backend tests passed; Ruff passed; frontend build/lint passed; Compose config passed | Complete |
 | V4 | Tenant-scoped conversations, persisted messages and LLM usage, Gemini provider adapter, grounded answers with source citations, safe provider/evidence fallbacks, and admin chat preview | 3 V4 chat tests passed; Ruff passed; frontend build passed | Complete; Gemini key is optional and fallback behavior is expected without it |
+| V5 | Tenant-configurable finite-state conversation flows, deterministic menu/global-intent routing, order-ID extraction, persisted conversation state/context, and RAG questions that preserve state | 4 V5 flow tests passed; 19 backend tests passed; Ruff passed | Complete |
 
 ### Validation commands
 
@@ -259,8 +261,8 @@ validation; opaque private storage keys; synchronous text extraction; roughly
 around matched query terms; 384-dimension local embeddings; PostgreSQL
 pgvector storage; tenant-filtered retrieval; retry/delete behavior; and the
 Knowledge Base page. The current embedding implementation is deterministic and
-local so V3 can be tested without an external AI provider. OpenAI and grounded
-chat are V4 work.
+local so V3 can be tested without an external AI provider. Grounded chat is
+implemented in V4 and conversation flows are implemented in V5.
 
 1. Sign in and open **Knowledge base**.
 2. Upload a `.txt`, `.pdf`, or `.docx` file.
@@ -313,6 +315,64 @@ python -m pytest backend/tests/test_chat.py -q
 Expected result: `3 passed`. With no Gemini key, provider fallback is the
 expected result; with a valid key, grounded questions should return a Gemini
 answer and citations.
+
+### V5 — Configurable conversation flow and intent handling
+
+V5 adds a strict, tenant-owned finite-state machine around chat. Admins save a
+versioned flow as validated JSON; the backend, not Gemini, decides whether a
+menu option or global intent is allowed.
+
+Manual check:
+
+1. Sign in as the demo owner.
+2. In API docs, save a flow with `PUT /api/v1/flows/current`, for example:
+
+```json
+{
+  "flow": {
+    "version": 1,
+    "initial_state": "start",
+    "states": {
+      "start": {
+        "prompt": "Choose an option.",
+        "options": {
+          "1": {"label": "Order status", "next_state": "order"}
+        }
+      },
+      "order": {
+        "prompt": "Please provide your order ID.",
+        "options": {}
+      }
+    }
+  }
+}
+```
+
+3. Create a conversation with `POST /api/v1/chat/conversations`.
+4. Send `1` to `POST /api/v1/chat/conversations/{id}/messages` and verify
+   `intent=menu_selection` and `current_state=order`.
+5. Send `I want to talk to a human` from any state and verify
+   `action=escalate`.
+6. Send `What is my order status?` and verify the response asks for a valid
+   order ID; send `ORD-1234` and verify the extracted entity is persisted.
+7. Ask a knowledge-base question during the flow and verify the response
+   remains tenant-scoped and the conversation state is preserved.
+8. Send invalid transition targets and verify the API returns `422`.
+
+V5 endpoints:
+
+- `GET /api/v1/flows/current`
+- `PUT /api/v1/flows/current`
+- `POST /api/v1/chat/conversations`
+- `POST /api/v1/chat/conversations/{id}/messages`
+
+Run the V5 tests:
+
+```powershell
+python -m pytest backend/tests/test_flows.py -q
+```
+
+Expected result: `4 passed`.
 
 Run the V3 tests:
 

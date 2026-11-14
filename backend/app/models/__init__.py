@@ -1,5 +1,6 @@
 from app.models.chat import Conversation, LLMUsage, Message
 from app.models.company_config import CompanyConfig
+from app.models.flow import ConversationFlow
 from app.models.knowledge import CompanyDocument, KnowledgeChunk
 from app.models.membership import Membership
 from app.models.organization import Organization
@@ -11,6 +12,7 @@ __all__ = [
     "CompanyConfig",
     "CompanyDocument",
     "Conversation",
+    "ConversationFlow",
     "IndustryTemplate",
     "KnowledgeChunk",
     "LLMUsage",

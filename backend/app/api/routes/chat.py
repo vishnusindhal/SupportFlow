@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import AuthContext, get_current_context, require_roles
 from app.db.session import get_db
-from app.models import Conversation, KnowledgeChunk, LLMUsage, Message
+from app.models import Conversation, ConversationFlow, KnowledgeChunk, LLMUsage, Message
 from app.schemas.chat import ChatResponse, ConversationCreate, MessageCreate, SourceReference
+from app.schemas.flow import FlowConfig
+from app.services.flow import decide
 from app.services.knowledge import embedding_for, lexical_score, relevant_excerpt
 from app.services.providers import GeminiProvider, ProviderError
 
@@ -31,6 +33,15 @@ def conversation_for(db: Session, conversation_id: uuid.UUID, context: AuthConte
     return conversation
 
 
+def configured_flow(db: Session, context: AuthContext) -> FlowConfig | None:
+    record = db.scalar(
+        select(ConversationFlow)
+        .where(ConversationFlow.organization_id == context.organization.id)
+        .order_by(ConversationFlow.version.desc())
+    )
+    return FlowConfig.model_validate(record.flow_json) if record else None
+
+
 def retrieve_sources(db: Session, query: str, context: AuthContext) -> list[tuple[KnowledgeChunk, str]]:
     chunks = db.scalars(
         select(KnowledgeChunk).where(KnowledgeChunk.organization_id == context.organization.id)
@@ -49,7 +60,13 @@ def retrieve_sources(db: Session, query: str, context: AuthContext) -> list[tupl
 
 @router.post("/conversations", status_code=status.HTTP_201_CREATED)
 def create_conversation(request: ConversationCreate, context: UserContext, db: Db) -> dict:
-    conversation = Conversation(organization_id=context.organization.id, channel=request.channel)
+    flow = configured_flow(db, context)
+    initial_state = flow.initial_state if flow else "start"
+    conversation = Conversation(
+        organization_id=context.organization.id,
+        channel=request.channel,
+        current_state=initial_state,
+    )
     db.add(conversation)
     db.commit()
     db.refresh(conversation)
@@ -68,18 +85,27 @@ def list_messages(conversation_id: uuid.UUID, context: UserContext, db: Db) -> l
 
 
 async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: AuthContext, db: Session) -> ChatResponse:
-    conversation_for(db, conversation_id, context)
+    conversation = conversation_for(db, conversation_id, context)
+    flow = configured_flow(db, context)
+    decision = decide(flow, conversation.current_state, request.content) if flow else None
+    entities = decision.entities if decision else {}
+    next_state = (
+        decision.next_state or conversation.current_state
+        if decision
+        else conversation.current_state
+    )
     user_message = Message(
         organization_id=context.organization.id,
         conversation_id=conversation_id,
         role="user",
         content=request.content,
+        intent=decision.intent if decision else None,
+        entities=entities,
     )
     db.add(user_message)
-    db.commit()
-    db.refresh(user_message)
+    db.flush()
     started = time.perf_counter()
-    sources = retrieve_sources(db, request.content, context)
+    sources = retrieve_sources(db, request.content, context) if not decision or not decision.handled else []
     usable = [item for item in sources if lexical_score(request.content, item[0].content) > 0]
     source_models = [
         SourceReference(
@@ -99,7 +125,11 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
     outcome = "fallback"
     model = "none"
     prompt_tokens = completion_tokens = None
-    if not fallback:
+    outcome = "flow" if decision and decision.handled else outcome
+    if decision and decision.handled:
+        answer = decision.answer or "Please choose an available option."
+        fallback = False
+    elif not fallback:
         evidence = "\n\n".join(f"[Source {index + 1}] {source.excerpt}" for index, source in enumerate(source_models))
         prompt = (
             "You are a grounded support assistant. Answer only using the quoted "
@@ -126,14 +156,22 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
         conversation_id=conversation_id,
         role="assistant",
         content=answer,
+        intent=decision.intent if decision else "knowledge_question",
+        entities=entities,
         metadata_json={"sources": [source.model_dump(mode="json") for source in source_models], "fallback": fallback},
     )
+    conversation.current_state = next_state
+    conversation.context_json = {
+        **conversation.context_json,
+        "last_intent": decision.intent if decision else "knowledge_question",
+        "entities": entities,
+    }
     db.add(assistant)
     db.add(
         LLMUsage(
             organization_id=context.organization.id,
             conversation_id=conversation_id,
-            provider="gemini",
+            provider="gemini" if outcome != "flow" else "internal",
             model=model,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
@@ -149,8 +187,11 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
         message_id=assistant.id,
         answer=answer,
         sources=source_models,
-        fallback=fallback or outcome != "success",
-        escalation_offered=True,
+        fallback=fallback or outcome in {"fallback", "provider_fallback"},
+        escalation_offered=bool(decision.escalation if decision else True),
+        intent=decision.intent if decision else "knowledge_question",
+        current_state=next_state,
+        action="escalate" if decision and decision.escalation else ("flow" if decision and decision.handled else "answer"),
     )
 
 
@@ -161,7 +202,12 @@ async def send_message(conversation_id: uuid.UUID, request: MessageCreate, conte
 
 @router.post("/preview", response_model=ChatResponse)
 async def preview(request: MessageCreate, context: Admin, db: Db):
-    conversation = Conversation(organization_id=context.organization.id, channel="admin_preview")
+    flow = configured_flow(db, context)
+    conversation = Conversation(
+        organization_id=context.organization.id,
+        channel="admin_preview",
+        current_state=flow.initial_state if flow else "start",
+    )
     db.add(conversation)
     db.commit()
     db.refresh(conversation)

@@ -27,3 +27,6 @@ class ChatResponse(BaseModel):
     sources: list[SourceReference]
     fallback: bool
     escalation_offered: bool
+    intent: str | None = None
+    current_state: str = "start"
+    action: str | None = None
