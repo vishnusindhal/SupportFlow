@@ -29,7 +29,7 @@ def embedding_for(text: str) -> list[float]:
     return [value / norm for value in values]
 
 
-def split_text(text: str, chunk_words: int = 500, overlap_words: int = 50) -> list[str]:
+def split_text(text: str, chunk_words: int = 120, overlap_words: int = 20) -> list[str]:
     words = re.findall(r"\S+", re.sub(r"\s+", " ", text).strip())
     if not words:
         return []

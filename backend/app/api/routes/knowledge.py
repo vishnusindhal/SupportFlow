@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -79,6 +80,25 @@ def process_document(db: Session, document: CompanyDocument, path: Path) -> None
         document.status = "failed"
         document.error_code = str(exc)[:120]
         db.commit()
+
+
+def lexical_score(query: str, content: str) -> float:
+    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
+    content_terms = set(re.findall(r"[a-z0-9]+", content.lower()))
+    if not query_terms:
+        return 0.0
+    return len(query_terms & content_terms) / len(query_terms)
+
+
+def relevant_excerpt(query: str, content: str, window_words: int = 45) -> str:
+    words = content.split()
+    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
+    for index, word in enumerate(words):
+        if re.findall(r"[a-z0-9]+", word.lower()) and re.findall(r"[a-z0-9]+", word.lower())[0] in query_terms:
+            start = max(0, index - window_words // 2)
+            end = min(len(words), start + window_words)
+            return " ".join(words[start:end])
+    return content
 
 
 @router.post("/documents", status_code=status.HTTP_201_CREATED)
@@ -168,23 +188,32 @@ def retrieve(request: RetrievalRequest, context: UserContext, db: Db) -> list[di
     query_embedding = embedding_for(request.query)
     query = select(KnowledgeChunk).where(KnowledgeChunk.organization_id == context.organization.id)
     if db.bind and db.bind.dialect.name == "postgresql":
-        ranked = db.scalars(
-            query.order_by(KnowledgeChunk.embedding.cosine_distance(query_embedding)).limit(request.top_k)
+        candidates = db.scalars(
+            query.order_by(KnowledgeChunk.embedding.cosine_distance(query_embedding)).limit(
+                max(request.top_k * 5, 20)
+            )
         ).all()
     else:
-        chunks = db.scalars(query).all()
-        ranked = sorted(
-            chunks,
-            key=lambda chunk: sum(a * b for a, b in zip(query_embedding, chunk.embedding)),
-            reverse=True,
-        )[: request.top_k]
+        candidates = db.scalars(query).all()
+    ranked = sorted(
+        candidates,
+        key=lambda chunk: (
+            0.7 * lexical_score(request.query, chunk.content)
+            + 0.3 * sum(a * b for a, b in zip(query_embedding, chunk.embedding))
+        ),
+        reverse=True,
+    )[: request.top_k]
     return [
         {
             "chunk_id": str(chunk.id),
             "document_id": str(chunk.document_id),
-            "content": chunk.content,
+            "content": relevant_excerpt(request.query, chunk.content),
             "metadata": chunk.metadata_json,
-            "score": sum(a * b for a, b in zip(query_embedding, chunk.embedding)),
+            "score": round(
+                0.7 * lexical_score(request.query, chunk.content)
+                + 0.3 * sum(a * b for a, b in zip(query_embedding, chunk.embedding)),
+                4,
+            ),
         }
         for chunk in ranked
     ]

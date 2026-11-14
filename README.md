@@ -244,7 +244,8 @@ alembic upgrade head
 
 Implemented: supported PDF, DOCX, and TXT uploads; MIME/extension/size
 validation; opaque private storage keys; synchronous text extraction; roughly
-500-word chunks with overlap; 384-dimension local embeddings; PostgreSQL
+120-word chunks with overlap; lexical plus vector ranking; focused excerpts
+around matched query terms; 384-dimension local embeddings; PostgreSQL
 pgvector storage; tenant-filtered retrieval; retry/delete behavior; and the
 Knowledge Base page. The current embedding implementation is deterministic and
 local so V3 can be tested without an external AI provider. OpenAI and grounded
@@ -254,7 +255,8 @@ chat are V4 work.
 2. Upload a `.txt`, `.pdf`, or `.docx` file.
 3. Verify the document status becomes `ready`.
 4. Enter a question in **Test retrieval** and confirm the returned passage
-   comes from the uploaded file.
+   comes from the uploaded file and is focused around the matching terms
+   rather than displaying the entire document.
 5. In the API docs, test the document list, detail, retry, delete, and
    `POST /api/v1/knowledge/retrieve` endpoints.
 6. Register a second organization and verify it cannot retrieve the first
@@ -283,3 +285,7 @@ use an authenticated token in `http://localhost:8000/docs` and test:
 To confirm tenant isolation, upload a private phrase while signed in as
 Company A, sign in as Company B, retrieve using that phrase, and verify that
 the result list is empty.
+
+If a document was uploaded before the V3 chunking/ranking fix, delete it and
+upload it again (or use the retry endpoint) so its old large chunks are
+recreated.
