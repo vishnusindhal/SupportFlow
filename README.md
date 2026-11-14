@@ -82,7 +82,8 @@ pytest
 V2 onboarding creates a tenant-owned configuration snapshot from the
 Northstar Store e-commerce template. V3 adds document parsing, chunking,
 embeddings, and tenant-filtered retrieval. V4 adds grounded AI chat, and V5
-adds configurable conversation flows and deterministic intent routing.
+adds configurable conversation flows and deterministic intent routing. V6 adds
+deterministic business rules before response generation.
 
 ## Version implementation and validation record
 
@@ -100,6 +101,7 @@ database behavior, see [`ai-agent/README.md`](./ai-agent/README.md).
 | V3 | PDF/DOCX/TXT upload, private storage keys, parsing, chunking, local embeddings, pgvector schema, tenant-scoped retrieval, retry/delete APIs, and Knowledge Base UI | 11 backend tests passed; Ruff passed; frontend build/lint passed; Compose config passed | Complete |
 | V4 | Tenant-scoped conversations, persisted messages and LLM usage, Gemini provider adapter, grounded answers with source citations, safe provider/evidence fallbacks, and admin chat preview | 3 V4 chat tests passed; Ruff passed; frontend build passed | Complete; Gemini key is optional and fallback behavior is expected without it |
 | V5 | Tenant-configurable finite-state conversation flows, deterministic menu/global-intent routing, order-ID extraction, persisted conversation state/context, and RAG questions that preserve state | 4 V5 flow tests passed; 19 backend tests passed; Ruff passed | Complete |
+| V6 | Tenant-owned typed rules, safe operators, priority matching, dry-run evaluation, execution audit logs, and deterministic chat actions | 4 V6 rules tests passed; full suite and Ruff passed | Complete |
 
 ### Validation commands
 
@@ -370,6 +372,70 @@ Run the V5 tests:
 
 ```powershell
 python -m pytest backend/tests/test_flows.py -q
+```
+
+Expected result: `4 passed`.
+
+### V6 — Deterministic business rules
+
+V6 evaluates explicit company rules after intent/entity extraction and before
+retrieval or Gemini. Rules are data, not code: no `eval`, `exec`, SQL, shell,
+or dynamic function execution is used.
+
+Supported condition operators:
+
+- `equals`
+- `not_equals`
+- `greater_than`
+- `less_than`
+- `contains`
+- `in`
+
+Supported actions are `escalate`, `require_approval`, `route_to_team`,
+`auto_respond`, and `set_priority`. Enabled rules are ordered by ascending
+priority and first-match-wins. Missing fields and type mismatches do not
+match.
+
+Manual check:
+
+1. Sign in as an owner/admin.
+2. In API docs, create a rule:
+
+```json
+{
+  "name": "Escalate order requests",
+  "conditions": [
+    {"field": "intent", "operator": "equals", "value": "order_status"}
+  ],
+  "logic": "all",
+  "action": {"type": "escalate", "message": "A support agent will help you."},
+  "priority": 10,
+  "enabled": true
+}
+```
+
+3. Use `POST /api/v1/rules/test` with
+   `{"context":{"intent":"order_status"}}` and verify a match without creating
+   an execution log.
+4. Send an order-status chat message and verify the rule response is returned
+   before Gemini, with `action=escalate`.
+5. Use `GET /api/v1/rules`, `PATCH /api/v1/rules/{id}`, and
+   `DELETE /api/v1/rules/{id}` to manage the tenant rules.
+6. Register another organization and verify it cannot read, update, or fire
+   the first organization's rules.
+
+V6 endpoints:
+
+- `GET /api/v1/rules`
+- `POST /api/v1/rules`
+- `PATCH /api/v1/rules/{id}`
+- `DELETE /api/v1/rules/{id}` (disables the rule)
+- `POST /api/v1/rules/test`
+
+Run the V6 tests:
+
+```powershell
+python -m pytest backend/tests/test_rules.py -q
 ```
 
 Expected result: `4 passed`.

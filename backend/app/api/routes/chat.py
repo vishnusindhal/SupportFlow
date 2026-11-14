@@ -8,12 +8,22 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import AuthContext, get_current_context, require_roles
 from app.db.session import get_db
-from app.models import Conversation, ConversationFlow, KnowledgeChunk, LLMUsage, Message
+from app.models import (
+    CompanyRule,
+    Conversation,
+    ConversationFlow,
+    KnowledgeChunk,
+    LLMUsage,
+    Message,
+    RuleExecutionLog,
+)
 from app.schemas.chat import ChatResponse, ConversationCreate, MessageCreate, SourceReference
 from app.schemas.flow import FlowConfig
+from app.schemas.rules import RuleAction
 from app.services.flow import decide
 from app.services.knowledge import embedding_for, lexical_score, relevant_excerpt
 from app.services.providers import GeminiProvider, ProviderError
+from app.services.rules import evaluate_conditions
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 Db = Annotated[Session, Depends(get_db)]
@@ -105,7 +115,41 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
     db.add(user_message)
     db.flush()
     started = time.perf_counter()
-    sources = retrieve_sources(db, request.content, context) if not decision or not decision.handled else []
+    rule_context = {
+        "message": request.content,
+        "intent": decision.intent if decision else "knowledge_question",
+        "entities": entities,
+        "conversation": {"state": conversation.current_state},
+    }
+    rules = db.scalars(
+        select(CompanyRule)
+        .where(CompanyRule.organization_id == context.organization.id, CompanyRule.enabled.is_(True))
+        .order_by(CompanyRule.priority, CompanyRule.created_at)
+    ).all()
+    matched_rule = None
+    matched_action = None
+    rule_trace = []
+    for rule in rules:
+        matched, conditions = evaluate_conditions(rule.conditions_json, rule.logic, rule_context)
+        rule_trace.append({"rule_id": str(rule.id), "name": rule.name, "matched": matched, "conditions": conditions})
+        db.add(
+            RuleExecutionLog(
+                organization_id=context.organization.id,
+                conversation_id=conversation_id,
+                rule_id=rule.id,
+                matched=matched,
+                result_json={"conditions": conditions},
+            )
+        )
+        if matched:
+            matched_rule = rule
+            matched_action = RuleAction.model_validate(rule.action_json)
+            break
+    sources = (
+        retrieve_sources(db, request.content, context)
+        if not matched_action and (not decision or not decision.handled)
+        else []
+    )
     usable = [item for item in sources if lexical_score(request.content, item[0].content) > 0]
     source_models = [
         SourceReference(
@@ -126,7 +170,18 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
     model = "none"
     prompt_tokens = completion_tokens = None
     outcome = "flow" if decision and decision.handled else outcome
-    if decision and decision.handled:
+    if matched_action:
+        outcome = "rule"
+        fallback = False
+        action_messages = {
+            "escalate": "This request has been escalated to a support agent.",
+            "require_approval": "This request requires human approval before it can continue.",
+            "route_to_team": f"This request has been routed to the {matched_action.team or 'support'} team.",
+            "auto_respond": matched_action.message or "Your request was handled by a company rule.",
+            "set_priority": f"Your request priority was set to {matched_action.priority or 'normal'}.",
+        }
+        answer = matched_action.message or action_messages[matched_action.type]
+    elif decision and decision.handled:
         answer = decision.answer or "Please choose an available option."
         fallback = False
     elif not fallback:
@@ -158,7 +213,12 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
         content=answer,
         intent=decision.intent if decision else "knowledge_question",
         entities=entities,
-        metadata_json={"sources": [source.model_dump(mode="json") for source in source_models], "fallback": fallback},
+        metadata_json={
+            "sources": [source.model_dump(mode="json") for source in source_models],
+            "fallback": fallback,
+            "matched_rule": str(matched_rule.id) if matched_rule else None,
+            "rule_trace": rule_trace,
+        },
     )
     conversation.current_state = next_state
     conversation.context_json = {
@@ -171,7 +231,7 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
         LLMUsage(
             organization_id=context.organization.id,
             conversation_id=conversation_id,
-            provider="gemini" if outcome != "flow" else "internal",
+            provider="gemini" if outcome not in {"flow", "rule"} else "internal",
             model=model,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
@@ -188,10 +248,21 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
         answer=answer,
         sources=source_models,
         fallback=fallback or outcome in {"fallback", "provider_fallback"},
-        escalation_offered=bool(decision.escalation if decision else True),
+        escalation_offered=bool(
+            (decision.escalation if decision else False)
+            or (matched_action and matched_action.type in {"escalate", "require_approval"})
+        ),
         intent=decision.intent if decision else "knowledge_question",
         current_state=next_state,
-        action="escalate" if decision and decision.escalation else ("flow" if decision and decision.handled else "answer"),
+        action=(
+            matched_action.type
+            if matched_action
+            else "escalate"
+            if decision and decision.escalation
+            else "flow"
+            if decision and decision.handled
+            else "answer"
+        ),
     )
 
 

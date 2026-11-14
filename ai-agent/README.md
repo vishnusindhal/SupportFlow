@@ -5,7 +5,7 @@ built, and how the main functions work together.
 
 ## Current implementation status
 
-SupportFlow is currently implemented through **V5**:
+SupportFlow is currently implemented through **V6**:
 
 | Version | Status | Main capability |
 |---|---|---|
@@ -15,7 +15,8 @@ SupportFlow is currently implemented through **V5**:
 | V3 | Complete | Private knowledge uploads, parsing, chunking, embeddings, and retrieval |
 | V4 | Complete | Grounded Gemini chat with citations and safe fallbacks |
 | V5 | Complete | Configurable conversation flows and deterministic intent handling |
-| V6+ | Not started | Business rules, tickets, integrations, and analytics |
+| V6 | Complete | Deterministic business rules and auditable rule execution |
+| V7+ | Not started | Tickets, integrations, and analytics |
 
 The current AI behavior is intentionally controlled. The system does not run
 autonomous agents, execute SQL or shell commands, call arbitrary tools, or
@@ -171,6 +172,28 @@ The flow JSON is validated with Pydantic. Unknown fields and transitions to
 undefined states are rejected. User flow configuration is data only; it is
 never executed as Python, SQL, or shell code.
 
+### V6 — Deterministic business rules
+
+V6 applies typed company rules after V5 intent/entity extraction and before
+retrieval or Gemini generation:
+
+1. Admins create validated tenant-owned rules.
+2. Each rule contains conditions, `all`/`any` logic, priority, enabled state,
+   and one typed action.
+3. Rules are ordered by priority and the first matching rule wins.
+4. The interpreter supports only `equals`, `not_equals`, `greater_than`,
+   `less_than`, `contains`, and `in`.
+5. Missing fields and invalid numeric comparisons do not match.
+6. Actions can escalate, require approval, route to a team, auto-respond, or
+   set priority.
+7. Matched actions are deterministic and are returned before Gemini.
+8. Every evaluated rule produces an auditable execution trace.
+9. A dry-run evaluates rules without creating conversation side effects.
+
+Rule configuration is never executed as code. The evaluator uses typed Python
+comparisons only, and all rule queries are scoped to the authenticated
+organization.
+
 ## Chat function flow
 
 ### Frontend
@@ -222,6 +245,8 @@ never executed as Python, SQL, or shell code.
 - `messages`: user and assistant messages.
 - `llm_usage`: provider, model, latency, outcome, and retrieval audit data.
 - `conversation_flows`: versioned tenant-owned state-machine configuration.
+- `company_rules`: typed tenant-owned business rules.
+- `rule_execution_logs`: matched-rule traces and audit results.
 
 ## Local setup
 
@@ -269,6 +294,16 @@ Open:
 6. Ask a knowledge question during a menu flow and verify state is retained.
 7. Register a second organization and verify it cannot read or change the
    first organization's flow.
+
+## Manual V6 verification
+
+1. Create a typed rule through `POST /api/v1/rules`.
+2. Test it with `POST /api/v1/rules/test`.
+3. Trigger it through a conversation message and verify the deterministic
+   action occurs before Gemini.
+4. Verify the matched rule and condition trace are stored.
+5. Disable it with `DELETE /api/v1/rules/{id}` and verify it no longer fires.
+6. Verify a second organization cannot access the rule.
 
 ## Automated verification
 

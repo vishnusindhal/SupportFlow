@@ -51,7 +51,7 @@ function Login() {
 
 function Shell() {
   const { signOut, session } = useAuth();
-  return <main><header><strong>SupportFlow</strong><nav><Link to="/">Dashboard</Link><Link to="/onboarding">Onboarding</Link><Link to="/knowledge">Knowledge base</Link><Link to="/chat">Chat preview</Link><button onClick={signOut}>Sign out</button></nav></header><section className="card"><h1>Welcome</h1><p>{session?.email} · organization {session?.organizationId}</p><p>Configure your industry template before adding knowledge.</p></section></main>;
+  return <main><header><strong>SupportFlow</strong><nav><Link to="/">Dashboard</Link><Link to="/onboarding">Onboarding</Link><Link to="/knowledge">Knowledge base</Link><Link to="/chat">Chat preview</Link><Link to="/rules">Rules</Link><button onClick={signOut}>Sign out</button></nav></header><section className="card"><h1>Welcome</h1><p>{session?.email} · organization {session?.organizationId}</p><p>Configure your industry template before adding knowledge.</p></section></main>;
 }
 
 function Onboarding() {
@@ -142,6 +142,43 @@ function KnowledgeBase() {
   return <section className="card"><h1>Knowledge base</h1><p>Upload private company content for tenant-scoped retrieval.</p><input type="file" accept=".pdf,.docx,.txt" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><button onClick={upload}>Upload and process</button><h2>Documents</h2>{documents.map((document) => <p key={document.id}>{document.original_filename} — {document.status}{document.error_code && ` (${document.error_code})`}</p>)}<h2>Test retrieval</h2><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ask about your documents" /><button onClick={retrieve}>Retrieve</button>{results.map((result) => <article key={result.chunk_id}><strong>{result.metadata.source_filename}</strong><p>{result.content}</p></article>)}{message && <p role="status">{message}</p>}</section>;
 }
 
+function Rules() {
+  const { session } = useAuth();
+  const base = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+  const headers = { Authorization: `Bearer ${session?.accessToken}` };
+  const [rules, setRules] = useState<{ id: string; name: string; priority: number; enabled: boolean; action: { type: string; message?: string } }[]>([]);
+  const [name, setName] = useState("Escalate order requests");
+  const [message, setMessage] = useState("A support agent will help you.");
+  const [status, setStatus] = useState("");
+
+  async function load() {
+    const response = await fetch(`${base}/api/v1/rules`, { headers });
+    if (response.ok) setRules(await response.json());
+  }
+  useEffect(() => { void load(); }, []);
+  async function create() {
+    const response = await fetch(`${base}/api/v1/rules`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        conditions: [{ field: "intent", operator: "equals", value: "order_status" }],
+        logic: "all",
+        action: { type: "escalate", message },
+        priority: 10,
+        enabled: true,
+      }),
+    });
+    if (response.ok) { setStatus("Rule created."); await load(); }
+    else setStatus("Rule could not be created.");
+  }
+  async function disable(id: string) {
+    const response = await fetch(`${base}/api/v1/rules/${id}`, { method: "DELETE", headers });
+    if (response.ok) { setStatus("Rule disabled."); await load(); }
+  }
+  return <section className="card"><h1>Business rules</h1><p>Rules run deterministically before Gemini.</p><label>Rule name<input value={name} onChange={(event) => setName(event.target.value)} /></label><label>Escalation message<input value={message} onChange={(event) => setMessage(event.target.value)} /></label><p>When intent equals <strong>order_status</strong>, escalate.</p><button onClick={create}>Create escalation rule</button><h2>Configured rules</h2>{rules.map((rule) => <p key={rule.id}>{rule.name} — priority {rule.priority} — {rule.enabled ? "enabled" : "disabled"} {rule.enabled && <button onClick={() => disable(rule.id)}>Disable</button>}</p>)}{status && <p role="status">{status}</p>}</section>;
+}
+
 export default function App() {
-  return <AuthProvider><Routes><Route path="/login" element={<Login />} /><Route element={<ProtectedRoute />}><Route path="/" element={<Shell />} /><Route path="/onboarding" element={<Onboarding />} /><Route path="/knowledge" element={<KnowledgeBase />} /><Route path="/chat" element={<ChatPreview />} /></Route><Route path="*" element={<Navigate to="/" replace />} /></Routes></AuthProvider>;
+  return <AuthProvider><Routes><Route path="/login" element={<Login />} /><Route element={<ProtectedRoute />}><Route path="/" element={<Shell />} /><Route path="/onboarding" element={<Onboarding />} /><Route path="/knowledge" element={<KnowledgeBase />} /><Route path="/chat" element={<ChatPreview />} /><Route path="/rules" element={<Rules />} /></Route><Route path="*" element={<Navigate to="/" replace />} /></Routes></AuthProvider>;
 }
