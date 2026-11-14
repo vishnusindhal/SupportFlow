@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from app.api.routes import auth, onboarding, organizations
+from app.api.routes import auth, knowledge, onboarding, organizations
 from app.db.session import SessionLocal
 from app.fixtures import NORTHSTAR_TEMPLATE
 from app.models import IndustryTemplate
@@ -18,6 +18,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(organizations.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
+app.include_router(knowledge.router, prefix="/api/v1")
 
 
 @app.on_event("startup")
