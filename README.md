@@ -88,6 +88,9 @@ embeddings, and tenant-filtered retrieval. Grounded AI chat is deferred to V4.
 This section records what was implemented in each version, what passed, what
 did not pass, and how to check the result manually.
 
+For the detailed AI-agent architecture, version history, function flows, and
+database behavior, see [`ai-agent/README.md`](./ai-agent/README.md).
+
 | Version | Implemented | Automated validation | Known status |
 |---|---|---|---|
 | V0 | Northstar Store fixtures, policies, FAQs, evaluation questions, and UX contract | Fixture tests passed | Complete |
