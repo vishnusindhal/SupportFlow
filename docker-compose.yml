@@ -21,8 +21,8 @@ services:
       JWT_SECRET_KEY: local-development-only-change-me
       COOKIE_SECURE: "false"
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
-      GEMINI_TIMEOUT_SECONDS: ${GEMINI_TIMEOUT_SECONDS:-20}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      GEMINI_TIMEOUT_SECONDS: ${GEMINI_TIMEOUT_SECONDS:-120}
     ports:
       - "8000:8000"
     depends_on:
