@@ -1,11 +1,69 @@
-:root { font-family: system-ui, sans-serif; color: #172033; background: #f5f7fb; }
-body { margin: 0; }
-main { max-width: 960px; margin: 0 auto; padding: 2rem; }
-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-nav { display: flex; align-items: center; gap: 1rem; }
-a { color: #2457c5; }
-button { border: 0; border-radius: .4rem; padding: .65rem 1rem; cursor: pointer; background: #2457c5; color: white; }
-label { display: block; margin: 1rem 0; }
-input:not([type="radio"]) { display: block; width: min(100%, 28rem); padding: .6rem; margin-top: .35rem; }
-.choice { padding: .75rem; border: 1px solid #d5dbea; border-radius: .4rem; }
-.card { background: white; border-radius: .75rem; padding: 2rem; margin-top: 2rem; box-shadow: 0 2px 12px #17203318; }
+@import "tailwindcss";
+
+@theme {
+  --color-aubergine: #211A35;
+  --color-aubergine-dark: #181326;
+  --color-aubergine-light: #2D2447;
+  --color-aubergine-muted: #3D325E;
+  
+  --color-ivory: #F7F4EE;
+  --color-ivory-light: #FAF8F4;
+  --color-ivory-dark: #ECE7DE;
+  
+  --color-surface: #FFFFFF;
+  
+  --color-coral: #FF765E;
+  --color-coral-hover: #E8634B;
+  --color-coral-light: #FFF0ED;
+  --color-coral-dark: #C94E37;
+  
+  --color-mint: #B8E0D2;
+  --color-mint-light: #EDF7F4;
+  --color-mint-dark: #287A59;
+  
+  --color-lavender: #D8C9F2;
+  --color-lavender-light: #F4EFFF;
+  --color-lavender-dark: #6C5299;
+  
+  --color-charcoal: #252331;
+  --color-slate-text: #777586;
+  --color-warm-border: #E8E3DC;
+  
+  --color-status-success: #287A59;
+  --color-status-warning: #B7791F;
+  --color-status-error: #C44545;
+
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+:root {
+  font-family: var(--font-sans);
+  color: var(--color-charcoal);
+  background-color: var(--color-ivory);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #F7F4EE;
+  color: #252331;
+}
+
+/* Subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8D2C7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8B0A2;
+}
