@@ -240,6 +240,25 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
             retrieval_ids=[str(source.chunk_id) for source in source_models],
         )
     )
+    escalation_needed = bool(
+        (decision.escalation if decision else False)
+        or (matched_action and matched_action.type in {"escalate", "require_approval", "route_to_team"})
+    )
+    if escalation_needed:
+        from app.services.tickets import escalate_conversation_to_ticket
+
+        intent_label = decision.intent if decision and decision.intent else "Customer Support Request"
+        escalate_conversation_to_ticket(
+            db=db,
+            org_id=context.organization.id,
+            conversation_id=conversation_id,
+            title=f"Escalation: {intent_label}",
+            reason=f"Triggered by '{matched_action.type if matched_action else 'customer_request'}'. Message: {request.content}",
+            priority=matched_action.priority if matched_action and matched_action.priority else "normal",
+            team=matched_action.team if matched_action else None,
+            metadata={"entities": entities, "intent": decision.intent if decision else None},
+        )
+
     db.commit()
     db.refresh(assistant)
     return ChatResponse(

@@ -2,8 +2,10 @@
 
 SupportFlow is a multi-tenant customer-support platform. V0 defines the
 Northstar Store prototype contract, V1 provides authentication and tenant-safe
-foundations, V2 provides versioned industry-template onboarding, and V3
-provides a tenant-scoped knowledge base and retrieval prototype.
+foundations, V2 provides versioned industry-template onboarding, V3
+provides a tenant-scoped knowledge base and retrieval prototype, V4-V6 provide
+grounded chat, conversation flows, and business rules, and V7 adds ticket management
+and human handoff.
 
 ## Local development
 
@@ -83,7 +85,8 @@ V2 onboarding creates a tenant-owned configuration snapshot from the
 Northstar Store e-commerce template. V3 adds document parsing, chunking,
 embeddings, and tenant-filtered retrieval. V4 adds grounded AI chat, and V5
 adds configurable conversation flows and deterministic intent routing. V6 adds
-deterministic business rules before response generation.
+deterministic business rules before response generation. V7 adds tenant-scoped
+ticket management, internal notes, and automatic human escalation from chat.
 
 ## Version implementation and validation record
 
@@ -109,6 +112,7 @@ Commit messages use one concise imperative line without `feat`, `fix`, or
 | V4 | Tenant-scoped conversations, persisted messages and LLM usage, Gemini provider adapter, grounded answers with source citations, safe provider/evidence fallbacks, and admin chat preview | 3 V4 chat tests passed; Ruff passed; frontend build passed | Complete; Gemini key is optional and fallback behavior is expected without it |
 | V5 | Tenant-configurable finite-state conversation flows, deterministic menu/global-intent routing, order-ID extraction, persisted conversation state/context, and RAG questions that preserve state | 4 V5 flow tests passed; 19 backend tests passed; Ruff passed | Complete |
 | V6 | Tenant-owned typed rules, safe operators, priority matching, dry-run evaluation, execution audit logs, and deterministic chat actions | 4 V6 rules tests passed; full suite and Ruff passed | Complete |
+| V7 | Tenant-scoped ticket lifecycle, internal comments, human handoff, idempotent escalation from chat rules, and full ticket management UI | 6 V7 ticket tests passed; 29 backend tests passed; Ruff passed; frontend build and lint passed | Complete |
 
 ### Validation commands
 

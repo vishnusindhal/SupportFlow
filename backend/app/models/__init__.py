@@ -7,6 +7,7 @@ from app.models.organization import Organization
 from app.models.refresh_session import RefreshSession
 from app.models.rules import CompanyRule, RuleExecutionLog
 from app.models.template import IndustryTemplate
+from app.models.ticket import Ticket, TicketComment
 from app.models.user import User
 
 __all__ = [
@@ -23,5 +24,7 @@ __all__ = [
     "Organization",
     "RefreshSession",
     "RuleExecutionLog",
+    "Ticket",
+    "TicketComment",
     "User",
 ]

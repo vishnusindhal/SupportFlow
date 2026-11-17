@@ -42,6 +42,7 @@ backend, and the frontend locally.
 | V4 | Added grounded Gemini chat with citations and fallbacks. |
 | V5 | Added tenant-configurable deterministic conversation flows. |
 | V6 | Added typed business rules, priority matching, and audit traces. |
+| V7 | Added tenant ticket management, human handoff, comments, and chat auto-escalation. |
 
 ## Best demo path
 
