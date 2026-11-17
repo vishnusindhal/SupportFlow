@@ -223,3 +223,52 @@ export interface RuleEvaluation {
   action?: RuleAction | null;
   trace: RuleTraceItem[];
 }
+
+export type TicketStatus = "open" | "in_progress" | "pending" | "resolved" | "closed";
+export type TicketPriority = "low" | "normal" | "high" | "urgent";
+
+export interface Ticket {
+  id: string;
+  organization_id: string;
+  conversation_id?: string | null;
+  customer_email?: string | null;
+  title: string;
+  description: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  team?: string | null;
+  assigned_to_user_id?: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string | null;
+}
+
+export interface TicketCreatePayload {
+  title: string;
+  description: string;
+  priority?: TicketPriority;
+  team?: string | null;
+  conversation_id?: string | null;
+  customer_email?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TicketUpdatePayload {
+  title?: string;
+  description?: string;
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  team?: string | null;
+  assigned_to_user_id?: string | null;
+}
+
+export interface TicketComment {
+  id: string;
+  ticket_id: string;
+  user_id?: string | null;
+  content: string;
+  is_internal: boolean;
+  created_at: string;
+}
+

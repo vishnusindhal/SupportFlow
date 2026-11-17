@@ -16,7 +16,7 @@ SupportFlow is currently implemented through **V6**:
 | V4 | Complete | Grounded Gemini chat with citations and safe fallbacks |
 | V5 | Complete | Configurable conversation flows and deterministic intent handling |
 | V6 | Complete | Deterministic business rules and auditable rule execution |
-| V7+ | Not started | Tickets, integrations, and analytics |
+| V7 | Complete | Ticket management, comments, and automatic conversation escalation |
 
 The current AI behavior is intentionally controlled. The system does not run
 autonomous agents, execute SQL or shell commands, call arbitrary tools, or
@@ -194,6 +194,23 @@ Rule configuration is never executed as code. The evaluator uses typed Python
 comparisons only, and all rule queries are scoped to the authenticated
 organization.
 
+### V7 — Ticket management and human handoff
+
+V7 introduces full ticket lifecycle tracking and automatic escalation from chat:
+
+1. Chat rules triggering `escalate`, `require_approval`, or `route_to_team`, or
+   conversations triggering human agent handoff, automatically create a ticket.
+2. Escalation is idempotent: existing open/in-progress/pending tickets for the
+   conversation are reused instead of creating duplicates.
+3. Tickets include status (`open`, `in_progress`, `pending`, `resolved`, `closed`),
+   priority (`low`, `medium`, `high`, `urgent`), assignee, resolution notes,
+   and audit timestamps.
+4. Support staff can collaborate via internal notes (`is_internal=True`) or
+   public comments (`is_internal=False`).
+5. All queries and mutations strictly verify `organization_id` tenant isolation.
+6. Frontend provides an intuitive ticket management workspace with status tabs,
+   priority badges, internal comment threads, and quick status actions.
+
 ## Chat function flow
 
 ### Frontend
@@ -247,6 +264,8 @@ organization.
 - `conversation_flows`: versioned tenant-owned state-machine configuration.
 - `company_rules`: typed tenant-owned business rules.
 - `rule_execution_logs`: matched-rule traces and audit results.
+- `tickets`: tenant-scoped support tickets linked to conversations and organizations.
+- `ticket_comments`: internal notes and public comments on tickets.
 
 ## Local setup
 

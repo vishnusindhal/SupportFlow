@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from app.api.routes import auth, chat, flows, knowledge, onboarding, organizations, rules
+from app.api.routes import auth, chat, flows, knowledge, onboarding, organizations, rules, tickets
 from app.db.session import SessionLocal
 from app.fixtures import NORTHSTAR_TEMPLATE
 from app.models import IndustryTemplate
@@ -22,6 +22,7 @@ app.include_router(knowledge.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(flows.router, prefix="/api/v1")
 app.include_router(rules.router, prefix="/api/v1")
+app.include_router(tickets.router, prefix="/api/v1")
 
 
 @app.on_event("startup")

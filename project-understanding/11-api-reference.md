@@ -52,5 +52,16 @@ role.
 | DELETE | `/rules/{id}` | Disable rule |
 | POST | `/rules/test` | Side-effect-free rule evaluation |
 
+## Tickets and escalation
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/tickets` | List tenant tickets with status/priority filtering |
+| POST | `/tickets` | Create a ticket |
+| GET | `/tickets/{id}` | Read ticket details |
+| PATCH | `/tickets/{id}` | Update ticket status, priority, team, or assignee |
+| POST | `/tickets/{id}/comments` | Add customer response or internal agent note |
+| GET | `/tickets/{id}/comments` | List ticket activity and comments |
+
 Interactive OpenAPI documentation is available at
 `http://localhost:8000/docs`.

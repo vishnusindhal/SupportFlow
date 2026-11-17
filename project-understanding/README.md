@@ -28,6 +28,7 @@ chronological order.
 | V4 | [v4-grounded-chat.md](./v4-grounded-chat.md) | Grounded Gemini chat |
 | V5 | [v5-conversation-flows.md](./v5-conversation-flows.md) | Configurable deterministic conversation flows |
 | V6 | [v6-business-rules.md](./v6-business-rules.md) | Deterministic business rules |
+| V7 | [v7-tickets-handoff.md](./v7-tickets-handoff.md) | Ticket management and human handoff |
 
 ## Feature files
 

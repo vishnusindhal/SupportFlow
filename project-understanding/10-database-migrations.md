@@ -10,6 +10,7 @@
 | `0004_v4_chat` | Conversations, messages, and LLM usage |
 | `0005_v5_flows` | Tenant conversation flows and chat state fields |
 | `0006_v6_rules` | Company rules and rule execution logs |
+| `0007_v7_tickets` | Support tickets, comments, and escalation metadata |
 
 ## Main entities
 
