@@ -103,9 +103,9 @@ export function TestingPlaygroundScreen() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-charcoal tracking-tight">Testing Playground</h1>
+          <h1 className="text-2xl font-bold text-charcoal tracking-tight">Chat & Test AI Agent</h1>
           <p className="text-xs sm:text-sm text-slate-text mt-0.5">
-            Simulate real customer interactions. Inspect the deterministic flow, rule matches, and evidence citations behind every response.
+            Test your AI assistant in real time. Ask customer questions to verify knowledge citations, automated business rules, and ticket escalations.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -115,7 +115,7 @@ export function TestingPlaygroundScreen() {
             onClick={resetConversation}
             leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
           >
-            Reset Chat
+            Restart Chat
           </Button>
         </div>
       </div>
