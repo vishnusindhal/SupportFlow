@@ -1,11 +1,25 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
+import { onboardingApi } from "../../api/onboarding";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
-import { ShieldCheck, LogOut, Lock } from "lucide-react";
+import type { CompanyConfigResponse } from "../../types";
+import { ShieldCheck, LogOut, Lock, Bot, Sliders } from "lucide-react";
 
 export function SettingsScreen() {
   const { session, signOut } = useAuth();
+  const [config, setConfig] = useState<CompanyConfigResponse | null>(null);
+
+  useEffect(() => {
+    onboardingApi
+      .getCurrentConfig()
+      .then(setConfig)
+      .catch(() => setConfig(null));
+  }, []);
+
+  const assistant = config?.config?.assistant;
 
   return (
     <div className="space-y-6 pb-12 max-w-4xl">
@@ -14,7 +28,7 @@ export function SettingsScreen() {
         <div>
           <h1 className="text-2xl font-bold text-charcoal tracking-tight">Organization & Workspace Settings</h1>
           <p className="text-xs sm:text-sm text-slate-text mt-0.5">
-            Manage your workspace configuration and security credentials.
+            Manage your workspace configuration, AI persona, and security credentials.
           </p>
         </div>
         <Badge variant="mint" withDot>
@@ -54,6 +68,47 @@ export function SettingsScreen() {
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Row-Level organization_id filtering active
               </span>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* AI Assistant Persona & Template */}
+      <Card>
+        <CardHeader
+          title="AI Assistant Persona & Template"
+          description="Active configuration snapshot powering your AI support agent."
+          action={
+            <Link to="/onboarding">
+              <Button variant="outline" size="sm" leftIcon={<Sliders className="w-3.5 h-3.5" />}>
+                Configure Onboarding
+              </Button>
+            </Link>
+          }
+        />
+        <CardBody className="p-6 space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-aubergine text-white flex items-center justify-center shrink-0">
+              <Bot className="w-6 h-6 text-mint" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-charcoal">
+                  {assistant?.name ?? "Northstar Support Assistant"}
+                </h3>
+                <Badge variant="mint">v{config?.template_version ?? 1}</Badge>
+              </div>
+              <p className="text-xs text-slate-text leading-relaxed">
+                Tone of voice: <span className="font-semibold text-charcoal">{assistant?.tone ?? "Clear, helpful, and concise"}</span>.
+              </p>
+              <div className="pt-2 flex items-center gap-2 text-xs">
+                <Badge variant={assistant?.handoff_enabled ? "mint" : "neutral"}>
+                  Human Handoff: {assistant?.handoff_enabled ? "Enabled" : "Disabled"}
+                </Badge>
+                <Badge variant="aubergine">
+                  Timezone: {config?.company_profile?.timezone ?? "UTC"}
+                </Badge>
+              </div>
             </div>
           </div>
         </CardBody>

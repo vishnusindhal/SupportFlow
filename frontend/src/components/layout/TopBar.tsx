@@ -13,28 +13,18 @@ export function TopBar({ onOpenMobileMenu, agentReady = true }: TopBarProps) {
   const getBreadcrumb = (path: string): { section: string; title: string } => {
     switch (true) {
       case path === "/":
-        return { section: "Workspace", title: "Overview Dashboard" };
-      case path.startsWith("/conversations"):
-        return { section: "Workspace", title: "Customer Conversations" };
-      case path.startsWith("/tickets"):
-        return { section: "Workspace", title: "Human Escalation Queue" };
-      case path.startsWith("/customers"):
-        return { section: "Workspace", title: "Customers" };
-      case path.startsWith("/agent"):
-        return { section: "AI Agent", title: "Agent Setup & Persona" };
+        return { section: "SupportFlow", title: "Dashboard" };
+      case path.startsWith("/playground") || path.startsWith("/chat") || path.startsWith("/conversations"):
+        return { section: "AI Agent", title: "Chat & Test Agent" };
       case path.startsWith("/knowledge"):
         return { section: "AI Agent", title: "Knowledge Base" };
-      case path.startsWith("/flows"):
-        return { section: "AI Agent", title: "Conversation Flows" };
-      case path.startsWith("/rules"):
-        return { section: "AI Agent", title: "Business Rules" };
-      case path.startsWith("/playground") || path.startsWith("/chat"):
-        return { section: "AI Agent", title: "Testing Playground" };
-      case path.startsWith("/analytics"):
-        return { section: "Insights", title: "Support Analytics" };
+      case path.startsWith("/tickets") || path.startsWith("/customers"):
+        return { section: "Support", title: "Tickets & Escalations" };
+      case path.startsWith("/rules") || path.startsWith("/flows"):
+        return { section: "Automation", title: "Business Rules" };
       case path.startsWith("/onboarding"):
-        return { section: "Setup", title: "Onboarding Wizard" };
-      case path.startsWith("/settings"):
+        return { section: "Setup", title: "Company Onboarding" };
+      case path.startsWith("/settings") || path.startsWith("/agent"):
         return { section: "Settings", title: "Organization Settings" };
       default:
         return { section: "SupportFlow", title: "Console" };
@@ -86,17 +76,19 @@ export function TopBar({ onOpenMobileMenu, agentReady = true }: TopBarProps) {
         </div>
 
         {/* Test Agent shortcut CTA */}
-        {location.pathname !== "/playground" && location.pathname !== "/chat" && (
-          <Link to="/playground">
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Sparkles className="w-3.5 h-3.5" />}
-            >
-              Test Agent
-            </Button>
-          </Link>
-        )}
+        {location.pathname !== "/playground" &&
+          location.pathname !== "/chat" &&
+          location.pathname !== "/conversations" && (
+            <Link to="/playground">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Sparkles className="w-3.5 h-3.5" />}
+              >
+                Test Agent
+              </Button>
+            </Link>
+          )}
       </div>
     </header>
   );

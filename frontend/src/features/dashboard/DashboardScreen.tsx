@@ -4,10 +4,11 @@ import { useAuth } from "../../auth/AuthProvider";
 import { onboardingApi } from "../../api/onboarding";
 import { knowledgeApi } from "../../api/knowledge";
 import { rulesApi } from "../../api/rules";
+import { ticketsApi } from "../../api/tickets";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
-import type { CompanyConfigResponse, CompanyDocument, CompanyRule } from "../../types";
+import type { CompanyConfigResponse, CompanyDocument, CompanyRule, Ticket } from "../../types";
 import {
   Sparkles,
   Database,
@@ -16,7 +17,7 @@ import {
   CheckCircle2,
   Circle,
   Bot,
-  FileText,
+  AlertCircle,
   Clock,
   Layers,
 } from "lucide-react";
@@ -27,15 +28,17 @@ export function DashboardScreen() {
   const [config, setConfig] = useState<CompanyConfigResponse | null>(null);
   const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [rules, setRules] = useState<CompanyRule[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [statusRes, docsRes, rulesRes] = await Promise.allSettled([
+        const [statusRes, docsRes, rulesRes, ticketsRes] = await Promise.allSettled([
           onboardingApi.getStatus(),
           knowledgeApi.getDocuments(),
           rulesApi.getRules(),
+          ticketsApi.getTickets(),
         ]);
 
         if (statusRes.status === "fulfilled") {
@@ -57,6 +60,10 @@ export function DashboardScreen() {
         if (rulesRes.status === "fulfilled") {
           setRules(rulesRes.value);
         }
+
+        if (ticketsRes.status === "fulfilled") {
+          setTickets(ticketsRes.value);
+        }
       } catch {
         // ignore
       }
@@ -67,61 +74,38 @@ export function DashboardScreen() {
 
   const readyDocuments = documents.filter((d) => d.status === "ready");
   const activeRules = rules.filter((r) => r.enabled);
+  const openTickets = tickets.filter((t) => t.status === "open" || t.status === "in_progress");
 
-  // Compute readiness
+  // Agent readiness
   const isAgentReady = isOnboardingComplete && readyDocuments.length > 0;
   const assistantName = config?.config?.assistant?.name ?? "Support Assistant";
 
   const checklistSteps = [
     {
-      title: "Organization workspace created",
-      description: `Tenant isolation active for ${session?.organization?.name ?? "your organization"}`,
-      completed: true,
-      link: "/settings",
-      actionLabel: "View settings",
-    },
-    {
-      title: "Industry template configured",
+      title: "Select Industry Template",
       description: isOnboardingComplete
-        ? `Configured with ${config?.config?.assistant?.name ?? "Industry"} template v${config?.template_version ?? 1}`
-        : "Select an industry template to load default intents and policies",
+        ? `Configured with ${assistantName} template`
+        : "Choose an industry template to load default intents, tone, and policies.",
       completed: isOnboardingComplete,
       link: "/onboarding",
-      actionLabel: isOnboardingComplete ? "View configuration" : "Complete onboarding",
+      actionLabel: isOnboardingComplete ? "View Setup" : "Complete Onboarding",
     },
     {
-      title: "Support knowledge uploaded",
+      title: "Upload Support Knowledge",
       description:
         readyDocuments.length > 0
-          ? `${readyDocuments.length} document(s) chunked and vector-embedded`
-          : "Upload PDFs, DOCX, or text policies for grounded answers",
+          ? `${readyDocuments.length} document(s) chunked and vector-embedded for AI answers`
+          : "Upload PDFs, DOCX, or text policy documents for grounded responses.",
       completed: readyDocuments.length > 0,
       link: "/knowledge",
-      actionLabel: "Manage knowledge",
+      actionLabel: "Upload Documents",
     },
     {
-      title: "Conversation flows verified",
-      description: "State machine handles greetings, order status, and human handoffs",
-      completed: isOnboardingComplete,
-      link: "/flows",
-      actionLabel: "Inspect flows",
-    },
-    {
-      title: "Business rules active",
-      description:
-        activeRules.length > 0
-          ? `${activeRules.length} deterministic rule(s) prioritizing customer requests`
-          : "Define deterministic actions (escalate, approval) before Gemini runs",
-      completed: activeRules.length > 0,
-      link: "/rules",
-      actionLabel: "Configure rules",
-    },
-    {
-      title: "Test assistant in playground",
-      description: "Ask questions to verify citations, grounded answers, and rule executions",
+      title: "Test AI Agent in Playground",
+      description: "Ask questions to verify citations, grounded answers, and escalation rules.",
       completed: false,
       link: "/playground",
-      actionLabel: "Launch playground",
+      actionLabel: "Launch Playground",
     },
   ];
 
@@ -136,13 +120,13 @@ export function DashboardScreen() {
             Welcome back, {session?.user?.display_name?.split(" ")[0] ?? "there"}
           </h1>
           <p className="text-xs sm:text-sm text-slate-text mt-0.5">
-            Here is the current operational status of your customer support workspace.
+            Overview of your SupportFlow AI assistant and customer support activity.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/playground">
             <Button variant="primary" size="md" leftIcon={<Sparkles className="w-4 h-4" />}>
-              Open Test Playground
+              Chat & Test Agent
             </Button>
           </Link>
         </div>
@@ -169,13 +153,13 @@ export function DashboardScreen() {
               <div className="flex items-center gap-2.5">
                 <h2 className="text-lg font-bold text-charcoal tracking-tight">{assistantName}</h2>
                 <Badge variant={isAgentReady ? "mint" : "amber"} withDot>
-                  {isAgentReady ? "Ready to Serve Customers" : "Setup In Progress"}
+                  {isAgentReady ? "Ready & Active" : "Setup Required"}
                 </Badge>
               </div>
               <p className="text-xs text-slate-text mt-1 max-w-xl leading-relaxed">
                 {isAgentReady
-                  ? "Your AI assistant is armed with tenant-scoped knowledge, deterministic state transitions, and priority escalation rules."
-                  : "Complete your knowledge ingestion and template configuration before publishing your assistant."}
+                  ? "Your AI assistant is armed with tenant-scoped knowledge, state transitions, and priority escalation rules."
+                  : "Upload support documents and select a template to enable grounded answers."}
               </p>
               <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-text font-medium">
                 <span className="flex items-center gap-1.5">
@@ -184,7 +168,7 @@ export function DashboardScreen() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Scale className="w-3.5 h-3.5 text-coral" />
-                  {activeRules.length} Active Business Rules
+                  {activeRules.length} Active Rules
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-lavender-dark" />
@@ -205,14 +189,14 @@ export function DashboardScreen() {
             {isOnboardingComplete && readyDocuments.length === 0 && (
               <Link to="/knowledge">
                 <Button variant="primary" size="md">
-                  Upload First Knowledge Doc
+                  Upload Knowledge Docs
                 </Button>
               </Link>
             )}
             {isAgentReady && (
               <Link to="/playground">
                 <Button variant="outline" size="md" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                  Run Verification Test
+                  Test Agent in Playground
                 </Button>
               </Link>
             )}
@@ -222,122 +206,156 @@ export function DashboardScreen() {
 
       {/* 2. Key Operational Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardBody className="p-5">
-            <div className="flex items-center justify-between text-slate-text mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">AI Grounding Mode</span>
-              <Bot className="w-4 h-4 text-mint-dark" />
-            </div>
-            <div className="text-2xl font-bold text-charcoal">Gemini + RAG</div>
-            <p className="text-xs text-slate-text mt-1.5">
-              Strictly answers from quoted evidence; safe fallback if evidence is missing.
-            </p>
-          </CardBody>
-        </Card>
+        <Link to="/knowledge" className="block group">
+          <Card hoverEffect className="p-5 h-full">
+            <CardBody className="p-0">
+              <div className="flex items-center justify-between text-slate-text mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Knowledge Base</span>
+                <Database className="w-4 h-4 text-mint-dark group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-2xl font-bold text-charcoal">
+                {readyDocuments.length} Document{readyDocuments.length === 1 ? "" : "s"}
+              </div>
+              <p className="text-xs text-slate-text mt-1.5">
+                {readyDocuments.length > 0 ? "Indexed for vector search" : "No documents uploaded yet"}
+              </p>
+            </CardBody>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardBody className="p-5">
-            <div className="flex items-center justify-between text-slate-text mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">Knowledge Chunks</span>
-              <FileText className="w-4 h-4 text-coral" />
-            </div>
-            <div className="text-2xl font-bold text-charcoal">
-              {readyDocuments.length > 0 ? `${readyDocuments.length} Documents` : "0 Indexed"}
-            </div>
-            <p className="text-xs text-slate-text mt-1.5">
-              384-dimensional vector embeddings with hybrid lexical ranking.
-            </p>
-          </CardBody>
-        </Card>
+        <Link to="/tickets" className="block group">
+          <Card hoverEffect className="p-5 h-full">
+            <CardBody className="p-0">
+              <div className="flex items-center justify-between text-slate-text mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Open Tickets</span>
+                <AlertCircle className="w-4 h-4 text-coral group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-2xl font-bold text-charcoal">
+                {openTickets.length} Active
+              </div>
+              <p className="text-xs text-slate-text mt-1.5">
+                {openTickets.length > 0 ? "Awaiting agent or human resolution" : "All customer tickets resolved"}
+              </p>
+            </CardBody>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardBody className="p-5">
-            <div className="flex items-center justify-between text-slate-text mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">Business Rules</span>
-              <Scale className="w-4 h-4 text-aubergine" />
-            </div>
-            <div className="text-2xl font-bold text-charcoal">{activeRules.length} Active</div>
-            <p className="text-xs text-slate-text mt-1.5">
-              Deterministic priority actions executed before any LLM generation.
-            </p>
-          </CardBody>
-        </Card>
+        <Link to="/rules" className="block group">
+          <Card hoverEffect className="p-5 h-full">
+            <CardBody className="p-0">
+              <div className="flex items-center justify-between text-slate-text mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Business Rules</span>
+                <Scale className="w-4 h-4 text-aubergine group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-2xl font-bold text-charcoal">{activeRules.length} Active</div>
+              <p className="text-xs text-slate-text mt-1.5">
+                Deterministic escalation & routing rules
+              </p>
+            </CardBody>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardBody className="p-5">
-            <div className="flex items-center justify-between text-slate-text mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">Tenant Boundary</span>
-              <Layers className="w-4 h-4 text-lavender-dark" />
-            </div>
-            <div className="text-2xl font-bold text-charcoal">Strictly Isolated</div>
-            <p className="text-xs text-slate-text mt-1.5">
-              Every document, chunk, and conversation is filtered by organization ID.
-            </p>
-          </CardBody>
-        </Card>
+        <Link to="/settings" className="block group">
+          <Card hoverEffect className="p-5 h-full">
+            <CardBody className="p-0">
+              <div className="flex items-center justify-between text-slate-text mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Workspace</span>
+                <Layers className="w-4 h-4 text-lavender-dark group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-2xl font-bold text-charcoal truncate">
+                {session?.organization?.name ?? "Protected"}
+              </div>
+              <p className="text-xs text-slate-text mt-1.5">
+                Strict multi-tenant database isolation
+              </p>
+            </CardBody>
+          </Card>
+        </Link>
       </div>
 
-      {/* 3. Setup Progress Stepper (Always helpful for new or growing workspaces) */}
-      <Card>
-        <CardHeader
-          title="Workspace Setup Progress"
-          description={`Completed ${completedCount} of ${checklistSteps.length} essential setup milestones.`}
-          action={
-            <div className="flex items-center gap-2">
-              <div className="w-24 sm:w-32 h-2 bg-ivory-dark rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-coral transition-all duration-500 rounded-full"
-                  style={{ width: `${(completedCount / checklistSteps.length) * 100}%` }}
-                />
-              </div>
-              <span className="text-xs font-bold text-charcoal">
-                {Math.round((completedCount / checklistSteps.length) * 100)}%
-              </span>
-            </div>
-          }
-        />
-        <div className="divide-y divide-warm-border/60">
-          {checklistSteps.map((step, idx) => (
-            <div
-              key={step.title}
-              className="p-4 sm:p-5 flex items-start justify-between gap-4 hover:bg-ivory-light/40 transition-colors"
-            >
-              <div className="flex items-start gap-3.5">
-                <div className="mt-0.5 shrink-0">
-                  {step.completed ? (
-                    <CheckCircle2 className="w-5 h-5 text-mint-dark" />
-                  ) : (
-                    <Circle className="w-5 h-5 text-warm-border" />
-                  )}
+      {/* 3. Setup Progress Stepper (Shown if not fully configured) */}
+      {!isAgentReady && (
+        <Card>
+          <CardHeader
+            title="Getting Started Checklist"
+            description={`Completed ${completedCount} of ${checklistSteps.length} essential setup steps.`}
+            action={
+              <div className="flex items-center gap-2">
+                <div className="w-24 sm:w-32 h-2 bg-ivory-dark rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-coral transition-all duration-500 rounded-full"
+                    style={{ width: `${(completedCount / checklistSteps.length) * 100}%` }}
+                  />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-text">Step {idx + 1}</span>
-                    <h3
-                      className={`text-sm font-semibold tracking-tight ${
-                        step.completed ? "text-charcoal" : "text-charcoal/80"
-                      }`}
-                    >
-                      {step.title}
-                    </h3>
+                <span className="text-xs font-bold text-charcoal">
+                  {Math.round((completedCount / checklistSteps.length) * 100)}%
+                </span>
+              </div>
+            }
+          />
+          <div className="divide-y divide-warm-border/60">
+            {checklistSteps.map((step, idx) => (
+              <div
+                key={step.title}
+                className="p-4 sm:p-5 flex items-start justify-between gap-4 hover:bg-ivory-light/40 transition-colors"
+              >
+                <div className="flex items-start gap-3.5">
+                  <div className="mt-0.5 shrink-0">
+                    {step.completed ? (
+                      <CheckCircle2 className="w-5 h-5 text-mint-dark" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-warm-border" />
+                    )}
                   </div>
-                  <p className="text-xs text-slate-text mt-0.5 leading-relaxed">{step.description}</p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-text">Step {idx + 1}</span>
+                      <h3
+                        className={`text-sm font-semibold tracking-tight ${
+                          step.completed ? "text-charcoal" : "text-charcoal/80"
+                        }`}
+                      >
+                        {step.title}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-text mt-0.5 leading-relaxed">{step.description}</p>
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <Link to={step.link}>
+                    <Button variant={step.completed ? "ghost" : "outline"} size="sm">
+                      {step.actionLabel}
+                    </Button>
+                  </Link>
                 </div>
               </div>
-              <div className="shrink-0">
-                <Link to={step.link}>
-                  <Button variant={step.completed ? "ghost" : "outline"} size="sm">
-                    {step.actionLabel}
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* 4. Quick Actions Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link to="/playground" className="block group">
+          <Card hoverEffect className="p-5 h-full flex flex-col justify-between">
+            <div>
+              <div className="w-9 h-9 rounded-lg bg-coral-light text-coral flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-semibold text-charcoal group-hover:text-coral transition-colors">
+                Chat & Test AI Agent
+              </h3>
+              <p className="text-xs text-slate-text mt-1 leading-relaxed">
+                Simulate customer inquiries, test document citations, and verify escalation rules in real-time.
+              </p>
+            </div>
+            <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-coral">
+              <span>Open playground</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Card>
+        </Link>
+
         <Link to="/knowledge" className="block group">
           <Card hoverEffect className="p-5 h-full flex flex-col justify-between">
             <div>
@@ -345,10 +363,10 @@ export function DashboardScreen() {
                 <Database className="w-5 h-5" />
               </div>
               <h3 className="text-sm font-semibold text-charcoal group-hover:text-coral transition-colors">
-                Upload Support Knowledge
+                Upload Knowledge
               </h3>
               <p className="text-xs text-slate-text mt-1 leading-relaxed">
-                Add return policies, FAQs, or shipping guidelines as PDF, DOCX, or text files.
+                Add return policies, shipping guides, or FAQs as PDF, DOCX, or TXT documents.
               </p>
             </div>
             <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-coral">
@@ -358,46 +376,112 @@ export function DashboardScreen() {
           </Card>
         </Link>
 
-        <Link to="/rules" className="block group">
+        <Link to="/tickets" className="block group">
           <Card hoverEffect className="p-5 h-full flex flex-col justify-between">
             <div>
               <div className="w-9 h-9 rounded-lg bg-lavender-light text-lavender-dark flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                <Scale className="w-5 h-5" />
+                <AlertCircle className="w-5 h-5" />
               </div>
               <h3 className="text-sm font-semibold text-charcoal group-hover:text-coral transition-colors">
-                Configure Business Rules
+                Support Tickets
               </h3>
               <p className="text-xs text-slate-text mt-1 leading-relaxed">
-                Create deterministic rules to route orders, request approvals, or escalate immediately.
+                Handle customer handoffs, collaborate with internal notes, and track issue resolution.
               </p>
             </div>
             <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-coral">
-              <span>Manage rules</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Card>
-        </Link>
-
-        <Link to="/playground" className="block group">
-          <Card hoverEffect className="p-5 h-full flex flex-col justify-between">
-            <div>
-              <div className="w-9 h-9 rounded-lg bg-coral-light text-coral flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-semibold text-charcoal group-hover:text-coral transition-colors">
-                Test in Live Playground
-              </h3>
-              <p className="text-xs text-slate-text mt-1 leading-relaxed">
-                Simulate customer questions, verify citations, and inspect real-time grounding traces.
-              </p>
-            </div>
-            <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-coral">
-              <span>Open playground</span>
+              <span>View tickets</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Card>
         </Link>
       </div>
+
+      {/* 5. Recent Support Tickets Table */}
+      <Card>
+        <CardHeader
+          title="Recent Support Tickets"
+          description="Customer issues and human escalations requiring team attention."
+          action={
+            <Link to="/tickets">
+              <Button variant="ghost" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+                View All Tickets ({tickets.length})
+              </Button>
+            </Link>
+          }
+        />
+        {tickets.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-text">
+            <AlertCircle className="w-8 h-8 text-slate-text/40 mx-auto mb-2" />
+            No customer tickets yet. When a conversation is escalated or a ticket is created, it will appear here.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-ivory border-b border-warm-border text-slate-text uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="py-3 px-5">Ticket</th>
+                  <th className="py-3 px-5">Subject</th>
+                  <th className="py-3 px-5">Priority</th>
+                  <th className="py-3 px-5">Status</th>
+                  <th className="py-3 px-5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-warm-border/60">
+                {tickets.slice(0, 5).map((ticket) => (
+                  <tr key={ticket.id} className="hover:bg-ivory-light/40 transition-colors">
+                    <td className="py-3.5 px-5 font-mono text-slate-text text-[11px]">
+                      #{ticket.id.slice(0, 8)}
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <div className="font-semibold text-charcoal">{ticket.title}</div>
+                      <div className="text-slate-text text-[11px] truncate max-w-xs">
+                        {ticket.customer_email ?? ticket.description}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <Badge
+                        variant={
+                          ticket.priority === "urgent"
+                            ? "red"
+                            : ticket.priority === "high"
+                              ? "coral"
+                              : ticket.priority === "normal"
+                                ? "amber"
+                                : "mint"
+                        }
+                      >
+                        {ticket.priority}
+                      </Badge>
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <Badge
+                        variant={
+                          ticket.status === "resolved" || ticket.status === "closed"
+                            ? "mint"
+                            : ticket.status === "in_progress"
+                              ? "aubergine"
+                              : "neutral"
+                        }
+                        withDot
+                      >
+                        {ticket.status.replace("_", " ")}
+                      </Badge>
+                    </td>
+                    <td className="py-3.5 px-5 text-right">
+                      <Link to="/tickets">
+                        <Button variant="ghost" size="sm">
+                          Manage
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
