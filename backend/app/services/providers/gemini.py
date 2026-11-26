@@ -34,7 +34,11 @@ class GeminiProvider:
                 raise ProviderError("provider_temporary_failure")
             response.raise_for_status()
             body = response.json()
-            text = body["candidates"][0]["content"]["parts"][0]["text"].strip()
+            # A reply can be split across several parts; skip "thought" parts.
+            parts = body["candidates"][0]["content"]["parts"]
+            text = "".join(part.get("text", "") for part in parts if not part.get("thought")).strip()
+            if not text:
+                raise ProviderError("provider_empty_response")
             usage = body.get("usageMetadata", {})
             return ProviderResult(
                 text=text,

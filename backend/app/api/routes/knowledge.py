@@ -1,4 +1,3 @@
-import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,6 +18,8 @@ from app.services.knowledge import (
     EMBEDDING_REVISION,
     embedding_for,
     extract_text,
+    lexical_score,
+    relevant_excerpt,
     save_upload,
     split_text,
 )
@@ -80,25 +81,6 @@ def process_document(db: Session, document: CompanyDocument, path: Path) -> None
         document.status = "failed"
         document.error_code = str(exc)[:120]
         db.commit()
-
-
-def lexical_score(query: str, content: str) -> float:
-    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
-    content_terms = set(re.findall(r"[a-z0-9]+", content.lower()))
-    if not query_terms:
-        return 0.0
-    return len(query_terms & content_terms) / len(query_terms)
-
-
-def relevant_excerpt(query: str, content: str, window_words: int = 45) -> str:
-    words = content.split()
-    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
-    for index, word in enumerate(words):
-        if re.findall(r"[a-z0-9]+", word.lower()) and re.findall(r"[a-z0-9]+", word.lower())[0] in query_terms:
-            start = max(0, index - window_words // 2)
-            end = min(len(words), start + window_words)
-            return " ".join(words[start:end])
-    return content
 
 
 @router.post("/documents", status_code=status.HTTP_201_CREATED)

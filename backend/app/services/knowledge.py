@@ -2,6 +2,7 @@ import hashlib
 import math
 import re
 import uuid
+from itertools import pairwise
 from pathlib import Path
 
 import fitz
@@ -44,23 +45,75 @@ def split_text(text: str, chunk_words: int = 120, overlap_words: int = 20) -> li
     return chunks
 
 
+# Common words carry no meaning for matching. Without this list, "how", "does"
+# or "the" make unrelated chunks look relevant.
+STOPWORDS = {
+    "a", "about", "after", "all", "also", "am", "an", "and", "any", "are", "as", "at", "be",
+    "been", "before", "but", "by", "can", "could", "did", "do", "does", "doing", "for", "from",
+    "get", "got", "had", "has", "have", "how", "i", "if", "in", "into", "is", "it", "its",
+    "just", "let", "me", "might", "much", "my", "need", "of", "on", "or", "our", "please",
+    "should", "so", "some", "tell", "than", "that", "the", "their", "them", "then", "there",
+    "these", "they", "this", "those", "to", "too", "us", "was", "we", "were", "what", "when",
+    "where", "which", "who", "why", "will", "with", "would", "you", "your",
+}
+
+
+def _stem(term: str) -> str:
+    # Minimal plural folding so "costs" matches "cost" and "returns" matches "return".
+    return term[:-1] if len(term) > 3 and term.endswith("s") and not term.endswith("ss") else term
+
+
+def terms_of(text: str) -> set[str]:
+    return {_stem(term) for term in re.findall(r"[a-z0-9]+", text.lower())}
+
+
+def query_terms(text: str) -> set[str]:
+    return {_stem(term) for term in re.findall(r"[a-z0-9]+", text.lower()) if term not in STOPWORDS}
+
+
+def _content_sequence(text: str) -> list[str]:
+    return [_stem(term) for term in re.findall(r"[a-z0-9]+", text.lower()) if term not in STOPWORDS]
+
+
+def _bigrams(sequence: list[str]) -> set[tuple[str, str]]:
+    return set(pairwise(sequence))
+
+
 def lexical_score(query: str, content: str) -> float:
-    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
-    content_terms = set(re.findall(r"[a-z0-9]+", content.lower()))
-    if not query_terms:
+    """Share of query terms found in the content, plus a bonus for matching phrases.
+
+    The phrase bonus breaks ties between chunks that share the same words: for
+    "physical stores", a chunk saying "physical stores" beats one saying
+    "physical damage ... Northstar Store".
+    """
+    terms = query_terms(query)
+    if not terms:
         return 0.0
-    return len(query_terms & content_terms) / len(query_terms)
+    base = len(terms & terms_of(content)) / len(terms)
+    query_pairs = _bigrams(_content_sequence(query))
+    if not query_pairs:
+        return base
+    phrase = len(query_pairs & _bigrams(_content_sequence(content))) / len(query_pairs)
+    return (base + 0.3 * phrase) / 1.3
 
 
 def relevant_excerpt(query: str, content: str, window_words: int = 45) -> str:
+    """Return the window of the chunk that contains the most query terms."""
     words = content.split()
-    query_terms = set(re.findall(r"[a-z0-9]+", query.lower()))
-    for index, word in enumerate(words):
-        terms = re.findall(r"[a-z0-9]+", word.lower())
-        if terms and terms[0] in query_terms:
-            start = max(0, index - window_words // 2)
-            return " ".join(words[start : min(len(words), start + window_words)])
-    return content
+    terms = query_terms(query)
+    if len(words) <= window_words or not terms:
+        return content
+    hits = [
+        1 if terms & terms_of(word) else 0
+        for word in words
+    ]
+    best_start, best_hits = 0, sum(hits[:window_words])
+    current = best_hits
+    for start in range(1, len(words) - window_words + 1):
+        current += hits[start + window_words - 1] - hits[start - 1]
+        if current > best_hits:
+            best_start, best_hits = start, current
+    return " ".join(words[best_start : best_start + window_words])
 
 
 async def save_upload(upload: UploadFile) -> tuple[Path, str, int]:

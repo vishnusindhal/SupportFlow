@@ -42,7 +42,10 @@ def test_unsupported_question_uses_safe_fallback_and_persists_messages(client, m
     assert response.status_code == 200
     body = response.json()
     assert body["fallback"] is True
-    assert "provider is not available" in body["answer"].lower()
+    # The document shares no meaningful terms with the question, so the
+    # no-evidence fallback answers without calling the provider.
+    assert "could not find enough company information" in body["answer"].lower()
+    assert body["sources"] == []
     messages = client.get(
         f"/api/v1/chat/conversations/{conversation['id']}/messages", headers=auth
     )

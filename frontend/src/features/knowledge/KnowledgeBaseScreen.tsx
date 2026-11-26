@@ -63,9 +63,17 @@ export function KnowledgeBaseScreen() {
       await loadDocuments();
     } catch (err: unknown) {
       const errResp = err as { response?: { data?: { detail?: string } } };
+      const detail = errResp.response?.data?.detail;
+      const readable: Record<string, string> = {
+        unsupported_file_type: `"${selectedFile.name}" was rejected: only PDF, DOCX, and TXT files are supported.`,
+        file_too_large: `"${selectedFile.name}" was rejected: the file is larger than the 10 MB upload limit.`,
+      };
       setFeedbackMessage({
         type: "error",
-        text: errResp.response?.data?.detail ?? "Upload failed. Please ensure file is valid PDF, DOCX, or TXT.",
+        text:
+          (detail && readable[detail]) ??
+          detail ??
+          "Upload failed. Please ensure file is valid PDF, DOCX, or TXT.",
       });
     } finally {
       setIsUploading(false);

@@ -23,8 +23,15 @@ export const onboardingApi = {
   },
 
   async getStatus(): Promise<OnboardingStatus> {
-    const res = await api.get<OnboardingStatus>("/api/v1/onboarding/status");
-    return res.data;
+    // The backend returns { completed, profile }; map it to the UI's field names.
+    const res = await api.get<{
+      completed: boolean;
+      profile?: OnboardingStatus["company_profile"];
+    }>("/api/v1/onboarding/status");
+    return {
+      is_completed: res.data.completed,
+      company_profile: res.data.profile ?? null,
+    };
   },
 
   async saveProfile(payload: CompanyProfilePayload): Promise<{ profile: Record<string, unknown> }> {
