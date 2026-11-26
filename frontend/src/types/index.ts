@@ -131,6 +131,8 @@ export interface ChatResponse {
   intent?: string | null;
   current_state: string;
   action: string;
+  human_review_offered?: boolean;
+  ticket_id?: string | null;
 }
 
 export interface Conversation {

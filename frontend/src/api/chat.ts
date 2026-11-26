@@ -7,7 +7,7 @@ export const chatApi = {
     return res.data;
   },
 
-  async createConversation(channel: string = "web_chat"): Promise<Conversation> {
+  async createConversation(channel: "admin_preview" | "widget" = "admin_preview"): Promise<Conversation> {
     const res = await api.post<Conversation>("/api/v1/chat/conversations", { channel });
     return res.data;
   },

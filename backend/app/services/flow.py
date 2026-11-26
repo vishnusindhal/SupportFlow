@@ -34,8 +34,15 @@ def detect_global_intent(text: str) -> str | None:
     return None
 
 
-def decide(flow: FlowConfig, current_state: str, text: str) -> FlowDecision:
-    entities = extract_entities(text)
+def decide(
+    flow: FlowConfig,
+    current_state: str,
+    text: str,
+    known_entities: dict[str, str] | None = None,
+) -> FlowDecision:
+    # Entities remembered from earlier turns are used unless this message
+    # supplies a new value (for example a different order ID).
+    entities = {**(known_entities or {}), **extract_entities(text)}
     global_intent = detect_global_intent(text)
     if global_intent == "talk_to_agent":
         return FlowDecision(

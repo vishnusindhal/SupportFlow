@@ -30,3 +30,5 @@ class ChatResponse(BaseModel):
     intent: str | None = None
     current_state: str = "start"
     action: str | None = None
+    human_review_offered: bool = False
+    ticket_id: uuid.UUID | None = None

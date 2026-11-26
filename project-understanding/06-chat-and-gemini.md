@@ -51,6 +51,36 @@ evidence is insufficient. The API key is never sent to React.
 one request. Normal chat first creates a conversation, then uses
 `POST /chat/conversations/{id}/messages`.
 
+## Conversation memory
+
+`backend/app/services/memory.py` gives each conversation short-term memory:
+
+- The last 6 messages are loaded (tenant-scoped) and passed to Gemini as
+  "Recent conversation", only to resolve references such as "it" or "that".
+  History is untrusted context, never evidence or instructions.
+- `context_json.last_topic` stores the last new question. A follow-up (short,
+  or containing words like it/that/they, or starting with "what about") is
+  searched as `last_topic + follow-up`, so retrieval finds the right documents.
+- Extracted entities such as `order_id` carry over to later turns and are
+  visible to flows and rules (`entities.order_id`). `restart` clears them.
+
+## Human review offer
+
+When the assistant cannot answer (no usable evidence, Gemini replies with the
+`NO_ANSWER` token, or the provider fails), it asks whether to create a human
+review request and stores `context_json.pending_human_review`.
+
+- `yes` (and similar) creates a ticket through
+  `escalate_conversation_to_ticket` with the question and recent transcript;
+  the response includes `ticket_id` and `action="human_review_created"`.
+- `no` declines without a ticket. Any other message dismisses the offer and is
+  processed normally.
+- If the conversation already has an active ticket, the assistant points to it
+  instead of offering again.
+
+The playground keeps one conversation (`POST /chat/conversations` then
+`/messages`) instead of the one-shot preview, so memory works there.
+
 ## Interview trade-off
 
 The application intentionally uses a provider abstraction and a direct HTTP

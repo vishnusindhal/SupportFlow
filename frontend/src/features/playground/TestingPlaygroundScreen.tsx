@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { chatApi } from "../../api/chat";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -13,6 +14,7 @@ import {
   GitFork,
   BookOpen,
   RotateCcw,
+  Ticket,
 } from "lucide-react";
 
 interface MessageItem {
@@ -34,6 +36,8 @@ export function TestingPlaygroundScreen() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeMeta, setActiveMeta] = useState<ChatResponse | null>(null);
+  // One persistent conversation gives the assistant memory of earlier turns.
+  const conversationIdRef = useRef<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -63,7 +67,11 @@ export function TestingPlaygroundScreen() {
     setIsLoading(true);
 
     try {
-      const response = await chatApi.preview(text.trim());
+      if (!conversationIdRef.current) {
+        const conversation = await chatApi.createConversation();
+        conversationIdRef.current = conversation.id;
+      }
+      const response = await chatApi.sendMessage(conversationIdRef.current, text.trim());
       const assistantMsg: MessageItem = {
         id: response.message_id || `asst-${Date.now()}`,
         role: "assistant",
@@ -87,6 +95,7 @@ export function TestingPlaygroundScreen() {
   }
 
   function resetConversation() {
+    conversationIdRef.current = null;
     setMessages([
       {
         id: "init",
@@ -166,7 +175,15 @@ export function TestingPlaygroundScreen() {
                       {/* Assistant citation pill */}
                       {!isUser && msg.responseMeta && (
                         <div className="mt-2.5 pt-2 border-t border-warm-border/60 flex flex-wrap items-center gap-2 text-[11px]">
-                          {msg.responseMeta.sources.length > 0 ? (
+                          {msg.responseMeta.ticket_id ? (
+                            <Link
+                              to="/tickets"
+                              className="text-aubergine font-medium flex items-center gap-1 hover:underline"
+                            >
+                              <Ticket className="w-3 h-3" />
+                              Human review ticket #{msg.responseMeta.ticket_id.slice(0, 8).toUpperCase()}
+                            </Link>
+                          ) : msg.responseMeta.sources.length > 0 ? (
                             <span className="text-mint-dark font-medium flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
                               Grounded in {msg.responseMeta.sources.length} document source(s)
@@ -189,6 +206,31 @@ export function TestingPlaygroundScreen() {
                           )}
                         </div>
                       )}
+
+                      {/* Human review offer: only actionable on the latest message */}
+                      {!isUser &&
+                        msg.responseMeta?.human_review_offered &&
+                        msg.id === messages[messages.length - 1]?.id && (
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              disabled={isLoading}
+                              onClick={() => handleSend("yes")}
+                              leftIcon={<Ticket className="w-3.5 h-3.5" />}
+                            >
+                              Yes, create review
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isLoading}
+                              onClick={() => handleSend("no")}
+                            >
+                              No thanks
+                            </Button>
+                          </div>
+                        )}
                     </div>
                   </div>
                 );
