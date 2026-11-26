@@ -1,5 +1,7 @@
 # Retrieval and Ranking
 
+> **Branch `feature/langchain`:** retrieval is a LangChain `BaseRetriever` with Gemini embeddings. See [15-langchain-langgraph.md](./15-langchain-langgraph.md).
+
 ## Query pipeline
 
 `POST /api/v1/knowledge/retrieve` accepts a query and optional `top_k`.

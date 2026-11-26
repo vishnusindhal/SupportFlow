@@ -48,6 +48,7 @@ chronological order.
 | Docker and local development | [12-docker-development.md](./12-docker-development.md) |
 | Tests and validation | [13-testing-validation.md](./13-testing-validation.md) |
 | Interview preparation | [14-interview-questions.md](./14-interview-questions.md) |
+| LangChain RAG and LangGraph workflow | [15-langchain-langgraph.md](./15-langchain-langgraph.md) |
 
 Every version and feature document includes purpose, implementation details,
 request flow, source locations, validation, manual checks, trade-offs, and

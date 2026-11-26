@@ -1,5 +1,7 @@
 # Conversations, Grounded Chat, and Gemini
 
+> **Branch `feature/langchain`:** the message pipeline below is implemented as a LangGraph workflow with LangChain chains. See [15-langchain-langgraph.md](./15-langchain-langgraph.md).
+
 ## Conversation persistence
 
 `conversations` stores the organization, channel, status, current flow state,

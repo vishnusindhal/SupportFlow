@@ -1,5 +1,4 @@
-from app.services.memory import is_affirmative, is_follow_up, is_negative, search_query_for
-from app.services.providers.gemini import ProviderResult
+from app.services.memory import is_affirmative, is_negative
 
 
 def register(client, slug, email):
@@ -35,31 +34,13 @@ def send(client, auth, conversation_id, content):
     )
 
 
-def capture_prompts(monkeypatch, reply="Grounded answer."):
-    prompts = []
-
-    async def fake_generate(_provider, prompt):
-        prompts.append(prompt)
-        return ProviderResult(text=reply, model="test-model")
-
-    monkeypatch.setattr("app.api.routes.chat.GeminiProvider.generate", fake_generate)
-    return prompts
-
-
 def test_memory_helpers():
-    assert is_follow_up("How much does it cost?")
-    assert is_follow_up("what about express?")
-    assert not is_follow_up("What is the return policy for electronics purchased online?")
-    assert search_query_for("Is it free?", "What is express shipping") == "What is express shipping Is it free?"
-    assert search_query_for("What is the warranty period for laptops?", "shipping") == (
-        "What is the warranty period for laptops?"
-    )
     assert is_affirmative("Yes please!") and is_affirmative("ok")
     assert is_negative("No thanks") and not is_negative("not sure what to do")
 
 
-def test_follow_up_question_uses_conversation_memory(client, monkeypatch):
-    prompts = capture_prompts(monkeypatch)
+def test_follow_up_question_is_rewritten_with_conversation_memory(client, fake_chains):
+    chains = fake_chains(rewrites={"Which framework does it use?": "Which framework does Eventopia use?"})
     auth = headers(register(client, "mem-a", "mem-a@example.com"))
     upload(client, auth, "Eventopia is a campus event discovery platform built with React and FastAPI.")
     upload(client, auth, "Northstar ships orders within five business days.", name="shipping.txt")
@@ -68,20 +49,23 @@ def test_follow_up_question_uses_conversation_memory(client, monkeypatch):
     first = send(client, auth, conversation["id"], "What is Eventopia?")
     assert first.status_code == 200
     assert first.json()["fallback"] is False
+    # No history yet, so the rewrite step is skipped.
+    assert chains.condense_calls == []
 
     second = send(client, auth, conversation["id"], "Which framework does it use?")
     assert second.status_code == 200
     body = second.json()
     assert body["fallback"] is False
-    assert body["sources"][0]["excerpt"].startswith("Eventopia")
-    # The model receives the earlier turn so "it" can be resolved.
-    assert "Customer: What is Eventopia?" in prompts[-1]
-    assert "Assistant: Grounded answer." in prompts[-1]
-    assert "Latest question: Which framework does it use?" in prompts[-1]
+    assert body["sources"][0]["document_name"] == "policy.txt"
+    # condense_question received the earlier turns as memory.
+    assert chains.condense_calls[-1]["history"] == [("human", "What is Eventopia?"), ("ai", "Grounded answer.")]
+    # Retrieval and the answer used the standalone question.
+    assert chains.answer_calls[-1]["standalone_question"] == "Which framework does Eventopia use?"
+    assert "Eventopia is a campus event discovery platform" in chains.answer_calls[-1]["evidence"]
 
 
-def test_order_id_is_remembered_across_turns(client, monkeypatch):
-    capture_prompts(monkeypatch)
+def test_order_id_is_remembered_across_turns(client, fake_chains):
+    fake_chains()
     auth = headers(register(client, "mem-b", "mem-b@example.com"))
     client.put(
         "/api/v1/flows/current",
@@ -167,38 +151,15 @@ def test_unrelated_message_dismisses_pending_offer(client):
     assert "store hours" in tickets[0]["title"]
 
 
-def test_model_no_answer_offers_human_review(client, monkeypatch):
-    capture_prompts(monkeypatch, reply="NO_ANSWER")
+def test_model_no_answer_offers_human_review(client, fake_chains):
+    fake_chains(answer="The evidence does not say.", answerable=False)
     auth = headers(register(client, "mem-f", "mem-f@example.com"))
     upload(client, auth, "Northstar returns are accepted within 30 days.")
     conversation = client.post("/api/v1/chat/conversations", headers=auth, json={}).json()
     body = send(client, auth, conversation["id"], "Are returns accepted for opened software?").json()
     assert body["fallback"] is True
     assert body["human_review_offered"] is True
-    assert "NO_ANSWER" not in body["answer"]
-
-
-def test_gemini_multi_part_reply_is_joined(monkeypatch):
-    import asyncio
-
-    import httpx
-
-    from app.core.config import get_settings
-    from app.services.providers import GeminiProvider
-
-    body = {
-        "candidates": [
-            {"content": {"parts": [{"text": "thinking...", "thought": True}, {"text": "Express shipping "}, {"text": "costs 12.99 USD."}]}}
-        ]
-    }
-
-    async def fake_post(_client, url, **_kwargs):
-        return httpx.Response(200, json=body, request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "test-key")
-    result = asyncio.run(GeminiProvider().generate("prompt"))
-    assert result.text == "Express shipping costs 12.99 USD."
+    assert "could not find enough company information" in body["answer"]
 
 
 def test_talk_to_agent_escalates_without_a_configured_flow(client):

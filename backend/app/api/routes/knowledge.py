@@ -12,17 +12,10 @@ from app.api.deps import AuthContext, get_current_context, require_roles
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import CompanyDocument, KnowledgeChunk
-from app.services.knowledge import (
-    EMBEDDING_DIMENSION,
-    EMBEDDING_MODEL,
-    EMBEDDING_REVISION,
-    embedding_for,
-    extract_text,
-    lexical_score,
-    relevant_excerpt,
-    save_upload,
-    split_text,
-)
+from app.services.ai.ingestion import index_document
+from app.services.ai.llm import HashEmbeddings, get_embeddings
+from app.services.ai.retriever import TenantHybridRetriever
+from app.services.knowledge import save_upload
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 Db = Annotated[Session, Depends(get_db)]
@@ -49,38 +42,8 @@ def serialize_document(document: CompanyDocument) -> dict:
 
 
 def process_document(db: Session, document: CompanyDocument, path: Path) -> None:
-    try:
-        text, metadata = extract_text(path)
-        chunks = split_text(text)
-        if not chunks:
-            raise ValueError("empty_document")
-        db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.document_id == document.id))
-        for index, content in enumerate(chunks):
-            db.add(
-                KnowledgeChunk(
-                    organization_id=document.organization_id,
-                    document_id=document.id,
-                    chunk_index=index,
-                    content=content,
-                    embedding=embedding_for(content),
-                    metadata_json={
-                        **metadata,
-                        "source_filename": document.original_filename,
-                        "embedding_model": EMBEDDING_MODEL,
-                        "embedding_revision": EMBEDDING_REVISION,
-                        "embedding_dimension": EMBEDDING_DIMENSION,
-                    },
-                )
-            )
-        document.status = "ready"
-        document.error_code = None
-        document.processed_at = datetime.now(UTC)
-        db.commit()
-    except (OSError, ValueError, RuntimeError) as exc:
-        db.rollback()
-        document.status = "failed"
-        document.error_code = str(exc)[:120]
-        db.commit()
+    """Load, split, embed and store a document with the LangChain pipeline."""
+    index_document(db, document, path, get_embeddings())
 
 
 @router.post("/documents", status_code=status.HTTP_201_CREATED)
@@ -167,35 +130,22 @@ def delete_document(document_id: uuid.UUID, context: Admin, db: Db) -> None:
 
 @router.post("/retrieve")
 def retrieve(request: RetrievalRequest, context: UserContext, db: Db) -> list[dict]:
-    query_embedding = embedding_for(request.query)
-    query = select(KnowledgeChunk).where(KnowledgeChunk.organization_id == context.organization.id)
-    if db.bind and db.bind.dialect.name == "postgresql":
-        candidates = db.scalars(
-            query.order_by(KnowledgeChunk.embedding.cosine_distance(query_embedding)).limit(
-                max(request.top_k * 5, 20)
-            )
-        ).all()
-    else:
-        candidates = db.scalars(query).all()
-    ranked = sorted(
-        candidates,
-        key=lambda chunk: (
-            0.7 * lexical_score(request.query, chunk.content)
-            + 0.3 * sum(a * b for a, b in zip(query_embedding, chunk.embedding))
-        ),
-        reverse=True,
-    )[: request.top_k]
+    retriever = TenantHybridRetriever(
+        db=db, organization_id=context.organization.id, embeddings=get_embeddings(), k=request.top_k
+    )
+    try:
+        documents = retriever.invoke(request.query)
+    except Exception:  # noqa: BLE001 - provider boundary, falls back safely
+        # Embedding API unavailable: rank by words only.
+        retriever.embeddings = HashEmbeddings()
+        documents = retriever.invoke(request.query)
     return [
         {
-            "chunk_id": str(chunk.id),
-            "document_id": str(chunk.document_id),
-            "content": relevant_excerpt(request.query, chunk.content),
-            "metadata": chunk.metadata_json,
-            "score": round(
-                0.7 * lexical_score(request.query, chunk.content)
-                + 0.3 * sum(a * b for a, b in zip(query_embedding, chunk.embedding)),
-                4,
-            ),
+            "chunk_id": doc.metadata["chunk_id"],
+            "document_id": doc.metadata["document_id"],
+            "content": doc.metadata["excerpt"],
+            "metadata": {k: v for k, v in doc.metadata.items() if k != "excerpt"},
+            "score": doc.metadata["score"],
         }
-        for chunk in ranked
+        for doc in documents
     ]

@@ -1,5 +1,7 @@
 # Knowledge Base Ingestion
 
+> **Branch `feature/langchain`:** ingestion uses LangChain `Document`s, `RecursiveCharacterTextSplitter` and Gemini embeddings. See [15-langchain-langgraph.md](./15-langchain-langgraph.md).
+
 ## Supported input
 
 The upload service accepts only:

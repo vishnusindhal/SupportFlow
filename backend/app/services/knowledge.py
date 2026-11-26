@@ -5,15 +5,12 @@ import uuid
 from itertools import pairwise
 from pathlib import Path
 
-import fitz
-from docx import Document as DocxDocument
 from fastapi import UploadFile
 
 from app.core.config import get_settings
 
 EMBEDDING_DIMENSION = 384
 EMBEDDING_MODEL = "supportflow-hash-embedding"
-EMBEDDING_REVISION = "v1"
 ALLOWED_TYPES = {
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -28,21 +25,6 @@ def embedding_for(text: str) -> list[float]:
         values.append((int.from_bytes(digest[:4], "big") / 2**32) * 2 - 1)
     norm = math.sqrt(sum(value * value for value in values)) or 1
     return [value / norm for value in values]
-
-
-def split_text(text: str, chunk_words: int = 120, overlap_words: int = 20) -> list[str]:
-    words = re.findall(r"\S+", re.sub(r"\s+", " ", text).strip())
-    if not words:
-        return []
-    chunks = []
-    step = max(1, chunk_words - overlap_words)
-    for start in range(0, len(words), step):
-        chunk = " ".join(words[start : start + chunk_words])
-        if chunk:
-            chunks.append(chunk)
-        if start + chunk_words >= len(words):
-            break
-    return chunks
 
 
 # Common words carry no meaning for matching. Without this list, "how", "does"
@@ -113,6 +95,12 @@ def relevant_excerpt(query: str, content: str, window_words: int = 45) -> str:
         current += hits[start + window_words - 1] - hits[start - 1]
         if current > best_hits:
             best_start, best_hits = start, current
+    # Center the window on the matches it contains, so the excerpt shows the
+    # text around them instead of ending at the matched word.
+    positions = [i for i in range(best_start, best_start + window_words) if hits[i]]
+    if positions:
+        center = (positions[0] + positions[-1]) // 2
+        best_start = min(max(0, center - window_words // 2), len(words) - window_words)
     return " ".join(words[best_start : best_start + window_words])
 
 
@@ -129,17 +117,3 @@ async def save_upload(upload: UploadFile) -> tuple[Path, str, int]:
     path = directory / key
     path.write_bytes(data)
     return path, key, len(data)
-
-
-def extract_text(path: Path) -> tuple[str, dict]:
-    suffix = path.suffix.lower()
-    if suffix == ".txt":
-        return path.read_text(encoding="utf-8"), {}
-    if suffix == ".pdf":
-        pdf = fitz.open(path)
-        pages = [page.get_text() for page in pdf]
-        return "\n".join(pages), {"page_count": len(pages)}
-    if suffix == ".docx":
-        document = DocxDocument(path)
-        return "\n".join(paragraph.text for paragraph in document.paragraphs), {}
-    raise ValueError("unsupported_file_type")

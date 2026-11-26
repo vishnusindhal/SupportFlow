@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.5-flash-lite"
     gemini_timeout_seconds: float = 30.0
+    gemini_embedding_model: str = "gemini-embedding-001"
+    # "auto" uses Gemini embeddings when an API key exists, otherwise the local
+    # hash embeddings. "hash" forces the offline embeddings (used by tests).
+    embedding_provider: str = "auto"
 
     # Support both `python` from the repository root and `python` from backend.
     # Docker receives these values from docker-compose.yml as environment vars.
