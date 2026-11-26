@@ -20,14 +20,28 @@ def _value(context: dict[str, Any], field: str) -> Any:
     return current
 
 
+def _normalize(value: Any) -> Any:
+    # Text comparisons ignore case and surrounding spaces ("Order_Status " == "order_status").
+    return value.strip().lower() if isinstance(value, str) else value
+
+
+def _as_list(expected: Any) -> list | None:
+    if isinstance(expected, list):
+        return expected
+    if isinstance(expected, str):
+        # The rules form sends "returns, cancellation" as one string.
+        return [item.strip() for item in expected.split(",") if item.strip()]
+    return None
+
+
 def _compare(actual: Any, condition: RuleCondition) -> bool:
     expected = condition.value
     if actual is None:
         return False
     if condition.operator == "equals":
-        return actual == expected
+        return _normalize(actual) == _normalize(expected)
     if condition.operator == "not_equals":
-        return actual != expected
+        return _normalize(actual) != _normalize(expected)
     if condition.operator == "contains":
         if isinstance(actual, str):
             return str(expected).lower() in actual.lower()
@@ -35,7 +49,8 @@ def _compare(actual: Any, condition: RuleCondition) -> bool:
             return expected in actual
         return False
     if condition.operator == "in":
-        return isinstance(expected, list) and actual in expected
+        options = _as_list(expected)
+        return options is not None and _normalize(actual) in [_normalize(option) for option in options]
     if condition.operator in {"greater_than", "less_than"}:
         try:
             left, right = float(actual), float(expected)

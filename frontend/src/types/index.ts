@@ -133,6 +133,7 @@ export interface ChatResponse {
   action: string;
   human_review_offered?: boolean;
   ticket_id?: string | null;
+  rule_name?: string | null;
 }
 
 export interface Conversation {

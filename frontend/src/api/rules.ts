@@ -21,6 +21,11 @@ export const rulesApi = {
     await api.delete(`/api/v1/rules/${id}`);
   },
 
+  async getOptions(): Promise<{ fields: string[]; intents: string[] }> {
+    const res = await api.get<{ fields: string[]; intents: string[] }>("/api/v1/rules/options");
+    return res.data;
+  },
+
   async testRules(context: Record<string, unknown>): Promise<RuleEvaluation> {
     const res = await api.post<RuleEvaluation>("/api/v1/rules/test", { context });
     return res.data;

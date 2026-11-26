@@ -34,7 +34,13 @@ from app.schemas.rules import RuleAction
 from app.services.ai.chains import SupportChains
 from app.services.ai.llm import HashEmbeddings, get_chat_model, get_embeddings
 from app.services.ai.retriever import TenantHybridRetriever
-from app.services.flow import FlowDecision, decide, detect_global_intent, extract_entities
+from app.services.flow import (
+    FlowDecision,
+    classify_intent,
+    decide,
+    detect_global_intent,
+    extract_entities,
+)
 from app.services.memory import format_history, is_affirmative, is_negative, recent_history
 from app.services.rules import evaluate_conditions
 from app.services.tickets import escalate_conversation_to_ticket
@@ -66,6 +72,7 @@ class SupportState(TypedDict, total=False):
     flow_answer: str | None
     flow_escalation: bool
     matched_rule_id: str | None
+    matched_rule_name: str | None
     matched_action: RuleAction | None
     rule_trace: list[dict]
     standalone_question: str
@@ -140,6 +147,7 @@ def review_reply(state: SupportState, config: RunnableConfig) -> dict:
         org_id=context.organization.id,
         conversation_id=conversation.id,
         title=f"Human review: {question[:180]}",
+        priority=memory.get("priority", "normal"),
         reason=(
             "The assistant could not answer this question and the customer asked "
             f"for human review.\n\nQuestion: {question}\n\nRecent conversation:\n{format_history(rows)}"
@@ -190,14 +198,17 @@ def detect_intent(state: SupportState, config: RunnableConfig) -> dict:
     if decision is None:
         return {
             "memory": memory,
-            "intent": "knowledge_question",
+            "intent": classify_intent(state["message"]),
             "entities": {**remembered, **extract_entities(state["message"])},
             "flow_handled": False,
             "flow_escalation": False,
         }
+    intent = decision.intent
+    if intent == "knowledge_question" and not decision.handled:
+        intent = classify_intent(state["message"])
     return {
         "memory": memory,
-        "intent": decision.intent,
+        "intent": intent,
         "entities": decision.entities or {},
         "next_state": decision.next_state or conversation.current_state,
         "flow_handled": decision.handled,
@@ -233,12 +244,19 @@ def evaluate_rules(state: SupportState, config: RunnableConfig) -> dict:
             )
         )
         if matched:
-            return {
+            action = RuleAction.model_validate(rule.action_json)
+            update = {
                 "rule_trace": trace,
                 "matched_rule_id": str(rule.id),
-                "matched_action": RuleAction.model_validate(rule.action_json),
+                "matched_rule_name": rule.name,
+                "matched_action": action,
             }
-    return {"rule_trace": trace, "matched_rule_id": None, "matched_action": None}
+            if action.type == "set_priority":
+                # Non-blocking: remember the priority for any ticket created
+                # later in this conversation, then answer normally.
+                update["memory"] = {**state["memory"], "priority": action.priority or "normal"}
+            return update
+    return {"rule_trace": trace, "matched_rule_id": None, "matched_rule_name": None, "matched_action": None}
 
 
 def rule_action(state: SupportState) -> dict:
@@ -248,7 +266,6 @@ def rule_action(state: SupportState) -> dict:
         "require_approval": "This request requires human approval before it can continue.",
         "route_to_team": f"This request has been routed to the {action.team or 'support'} team.",
         "auto_respond": "Your request was handled by a company rule.",
-        "set_priority": f"Your request priority was set to {action.priority or 'normal'}.",
     }
     return {
         "answer": action.message or default_messages[action.type],
@@ -277,7 +294,7 @@ def escalate(state: SupportState, config: RunnableConfig) -> dict:
         conversation_id=conversation.id,
         title=f"Escalation: {state['intent'] or 'Customer Support Request'}",
         reason=f"Triggered by '{action.type if action else 'customer_request'}'. Message: {state['message']}",
-        priority=action.priority if action and action.priority else "normal",
+        priority=action.priority if action and action.priority else state["memory"].get("priority", "normal"),
         team=action.team if action else None,
         metadata={"entities": state["entities"], "intent": state["intent"]},
     )
@@ -417,6 +434,7 @@ def persist(state: SupportState, config: RunnableConfig) -> dict:
             "sources": sources,
             "fallback": state["fallback"],
             "matched_rule": state.get("matched_rule_id"),
+            "matched_rule_name": state.get("matched_rule_name"),
             "rule_trace": state["rule_trace"],
             "standalone_question": state.get("standalone_question"),
             "human_review_offered": state["human_review_offered"],
@@ -456,7 +474,8 @@ def route_start(state: SupportState) -> str:
 
 
 def route_after_rules(state: SupportState) -> str:
-    if state.get("matched_action"):
+    action = state.get("matched_action")
+    if action and action.type != "set_priority":
         return "rule_action"
     if state.get("flow_handled"):
         return "flow_reply"

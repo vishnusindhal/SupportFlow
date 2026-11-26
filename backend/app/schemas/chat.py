@@ -32,3 +32,4 @@ class ChatResponse(BaseModel):
     action: str | None = None
     human_review_offered: bool = False
     ticket_id: uuid.UUID | None = None
+    rule_name: str | None = None

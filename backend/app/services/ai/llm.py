@@ -89,6 +89,7 @@ def get_chat_model() -> BaseChatModel | None:
         model=settings.gemini_model,
         google_api_key=settings.gemini_api_key,
         timeout=settings.gemini_timeout_seconds,
-        # Fail fast and fall back to a human instead of retrying for minutes.
-        max_retries=1,
+        # A couple of retries ride out short Gemini overloads (503); after that
+        # the workflow offers a human instead of waiting for minutes.
+        max_retries=2,
     )

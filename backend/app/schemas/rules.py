@@ -1,9 +1,11 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 RuleOperator = Literal["equals", "not_equals", "greater_than", "less_than", "contains", "in"]
 RuleActionType = Literal["escalate", "require_approval", "route_to_team", "auto_respond", "set_priority"]
+# Fields available in the chat rule context; anything else could never match.
+RULE_CONTEXT_ROOTS = ("message", "intent", "entities", "conversation")
 
 
 class RuleCondition(BaseModel):
@@ -23,7 +25,7 @@ class RuleAction(BaseModel):
     priority: Literal["low", "normal", "high", "urgent"] | None = None
 
 
-class RuleInput(BaseModel):
+class RuleFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=120)
@@ -34,7 +36,23 @@ class RuleInput(BaseModel):
     enabled: bool = True
 
 
-class RuleResponse(RuleInput):
+class RuleInput(RuleFields):
+    """Create/update payload. Stored rules are listed with `RuleResponse`, which
+    skips this check so an older rule with an unknown field still displays."""
+
+    @field_validator("conditions")
+    @classmethod
+    def fields_exist_in_chat_context(cls, conditions: list[RuleCondition]) -> list[RuleCondition]:
+        for condition in conditions:
+            root = condition.field.split(".")[0]
+            if root not in RULE_CONTEXT_ROOTS:
+                raise ValueError(
+                    f"Unknown field '{condition.field}'. Use message, intent, entities.<name> or conversation.state."
+                )
+        return conditions
+
+
+class RuleResponse(RuleFields):
     id: str
     organization_id: str
 
@@ -49,3 +67,8 @@ class RuleEvaluation(BaseModel):
     rule_name: str | None = None
     action: RuleAction | None = None
     trace: list[dict[str, Any]]
+
+
+class RuleOptions(BaseModel):
+    fields: list[str]
+    intents: list[str]

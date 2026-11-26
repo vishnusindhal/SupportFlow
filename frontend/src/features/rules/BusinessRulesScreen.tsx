@@ -39,7 +39,23 @@ export function BusinessRulesScreen() {
   const [actionType, setActionType] = useState<RuleActionType>("escalate");
   const [actionMessage, setActionMessage] = useState("A customer support representative will review this request.");
   const [actionTeam, setActionTeam] = useState("");
+  const [ticketPriority, setTicketPriority] = useState<"" | "low" | "normal" | "high" | "urgent">("");
   const [isCreating, setIsCreating] = useState(false);
+  // Fields and intents the chat workflow actually provides (from the backend).
+  const [fieldOptions, setFieldOptions] = useState<string[]>([
+    "intent",
+    "message",
+    "entities.order_id",
+    "conversation.state",
+  ]);
+  const [intentOptions, setIntentOptions] = useState<string[]>([
+    "order_status",
+    "damaged_item",
+    "cancellation",
+    "returns",
+    "talk_to_agent",
+    "knowledge_question",
+  ]);
 
   // Dry-run Sandbox Modal
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
@@ -68,7 +84,28 @@ export function BusinessRulesScreen() {
 
   useEffect(() => {
     void loadRules();
+    rulesApi
+      .getOptions()
+      .then((options) => {
+        setFieldOptions(options.fields);
+        setIntentOptions(options.intents);
+      })
+      .catch(() => {
+        // Keep the built-in defaults.
+      });
   }, []);
+
+  const usesTicket = actionType !== "auto_respond";
+  const isIntentValue = conditionField === "intent" && conditionOperator !== "in" && conditionOperator !== "contains";
+
+  function handleFieldChange(field: string) {
+    setConditionField(field);
+    if (field === "intent") {
+      setConditionValue(intentOptions[0] ?? "order_status");
+    } else if (conditionField === "intent") {
+      setConditionValue("");
+    }
+  }
 
   async function handleCreateRule(e: React.FormEvent) {
     e.preventDefault();
@@ -90,8 +127,9 @@ export function BusinessRulesScreen() {
       ],
       action: {
         type: actionType,
-        message: actionMessage.trim() || undefined,
+        message: actionType === "set_priority" ? undefined : actionMessage.trim() || undefined,
         team: actionType === "route_to_team" ? actionTeam.trim() || "support" : undefined,
+        priority: usesTicket && ticketPriority ? ticketPriority : undefined,
       },
       enabled: true,
     };
@@ -105,10 +143,14 @@ export function BusinessRulesScreen() {
       setActionMessage("A customer support representative will review this request.");
       await loadRules();
     } catch (err: unknown) {
-      const errResp = err as { response?: { data?: { detail?: string } } };
+      const errResp = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> } } };
+      const detail = errResp.response?.data?.detail;
       setFeedback({
         type: "error",
-        text: errResp.response?.data?.detail ?? "Could not create rule. Check condition format.",
+        text:
+          typeof detail === "string"
+            ? detail
+            : detail?.[0]?.msg?.replace(/^Value error, /, "") ?? "Could not create rule. Check condition format.",
       });
     } finally {
       setIsCreating(false);
@@ -122,6 +164,31 @@ export function BusinessRulesScreen() {
       await loadRules();
     } catch {
       setFeedback({ type: "error", text: "Could not disable rule." });
+    }
+  }
+
+  async function handleEnableRule(rule: CompanyRule) {
+    try {
+      await rulesApi.updateRule(rule.id, {
+        name: rule.name,
+        conditions: rule.conditions,
+        logic: rule.logic,
+        action: rule.action,
+        priority: rule.priority,
+        enabled: true,
+      });
+      setFeedback({ type: "success", text: `Rule "${rule.name}" enabled.` });
+      await loadRules();
+    } catch (err: unknown) {
+      const errResp = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> } } };
+      const detail = errResp.response?.data?.detail;
+      setFeedback({
+        type: "error",
+        text:
+          typeof detail === "string"
+            ? detail
+            : detail?.[0]?.msg?.replace(/^Value error, /, "") ?? "Could not enable rule.",
+      });
     }
   }
 
@@ -287,7 +354,7 @@ export function BusinessRulesScreen() {
                       )}
                     </td>
                     <td className="py-3.5 px-5 text-right">
-                      {rule.enabled && (
+                      {rule.enabled ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -295,6 +362,15 @@ export function BusinessRulesScreen() {
                           title="Disable rule"
                         >
                           <Trash2 className="w-3.5 h-3.5 text-status-error" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleEnableRule(rule)}
+                          title="Enable rule"
+                        >
+                          Enable
                         </Button>
                       )}
                     </td>
@@ -349,12 +425,11 @@ export function BusinessRulesScreen() {
               WHEN (Condition Definition)
             </span>
             <div className="grid grid-cols-3 gap-2">
-              <Input
+              <Select
                 label="Context Field"
-                required
-                placeholder="intent, entities.order_id"
                 value={conditionField}
-                onChange={(e) => setConditionField(e.target.value)}
+                onChange={(e) => handleFieldChange(e.target.value)}
+                options={fieldOptions.map((field) => ({ value: field, label: field }))}
               />
               <Select
                 label="Operator"
@@ -369,14 +444,35 @@ export function BusinessRulesScreen() {
                   { value: "in", label: "in list" },
                 ]}
               />
-              <Input
-                label="Target Value"
-                required
-                placeholder="order_status, damaged_item"
-                value={conditionValue}
-                onChange={(e) => setConditionValue(e.target.value)}
-              />
+              {isIntentValue ? (
+                <Select
+                  label="Target Value"
+                  value={conditionValue}
+                  onChange={(e) => setConditionValue(e.target.value)}
+                  options={intentOptions.map((intent) => ({ value: intent, label: intent }))}
+                />
+              ) : (
+                <Input
+                  label="Target Value"
+                  required
+                  placeholder={
+                    conditionOperator === "in"
+                      ? "returns, cancellation"
+                      : conditionField === "message"
+                      ? "e.g. damaged, lawyer"
+                      : "e.g. ORD-1234"
+                  }
+                  value={conditionValue}
+                  onChange={(e) => setConditionValue(e.target.value)}
+                />
+              )}
             </div>
+            <p className="text-[11px] text-slate-text leading-relaxed">
+              <strong>intent</strong> is detected from the customer message (order status, damaged item,
+              cancellation, returns, talk to agent). <strong>message</strong> + contains matches words in
+              the message. For <strong>in list</strong>, separate values with commas. Text comparisons ignore
+              upper/lower case.
+            </p>
           </div>
 
           <div className="p-4 bg-ivory rounded-xl border border-warm-border space-y-3">
@@ -404,14 +500,35 @@ export function BusinessRulesScreen() {
                   onChange={(e) => setActionTeam(e.target.value)}
                 />
               )}
+              {usesTicket && (
+                <Select
+                  label="Ticket Priority"
+                  value={ticketPriority}
+                  onChange={(e) => setTicketPriority(e.target.value as typeof ticketPriority)}
+                  options={[
+                    { value: "", label: actionType === "set_priority" ? "normal" : "Default (normal)" },
+                    { value: "low", label: "low" },
+                    { value: "normal", label: "normal" },
+                    { value: "high", label: "high" },
+                    { value: "urgent", label: "urgent" },
+                  ]}
+                />
+              )}
             </div>
 
-            <Input
-              label="Customer-Facing Response Message"
-              placeholder="e.g. Your request has been escalated to our human support team."
-              value={actionMessage}
-              onChange={(e) => setActionMessage(e.target.value)}
-            />
+            {actionType === "set_priority" ? (
+              <p className="text-[11px] text-slate-text leading-relaxed">
+                Set Priority does not reply by itself: the assistant answers normally, and any ticket created
+                later in the conversation gets this priority.
+              </p>
+            ) : (
+              <Input
+                label="Customer-Facing Response Message"
+                placeholder="e.g. Your request has been escalated to our human support team."
+                value={actionMessage}
+                onChange={(e) => setActionMessage(e.target.value)}
+              />
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

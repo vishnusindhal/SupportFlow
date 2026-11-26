@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import AuthContext, get_current_context, require_roles
 from app.db.session import get_db
 from app.models import CompanyRule
-from app.schemas.rules import RuleEvaluation, RuleInput, RuleResponse, RuleTestRequest
+from app.schemas.rules import RuleEvaluation, RuleInput, RuleOptions, RuleResponse, RuleTestRequest
+from app.services.flow import SUPPORTED_INTENTS
 from app.services.rules import evaluate_conditions
 
 router = APIRouter(prefix="/rules", tags=["rules"])
@@ -61,6 +62,15 @@ def evaluate_rule_set(
                 trace,
             )
     return RuleEvaluation(matched=False, trace=trace), trace
+
+
+@router.get("/options", response_model=RuleOptions)
+def rule_options(context: UserContext) -> RuleOptions:
+    """Fields and intents a chat rule can match, for the rules form."""
+    return RuleOptions(
+        fields=["intent", "message", "entities.order_id", "conversation.state"],
+        intents=SUPPORTED_INTENTS,
+    )
 
 
 @router.get("", response_model=list[RuleResponse])

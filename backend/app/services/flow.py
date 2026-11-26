@@ -23,6 +23,39 @@ def extract_entities(text: str) -> dict[str, str]:
     return {"order_id": match.group(1).upper()} if match else {}
 
 
+# Deterministic intent keywords, checked in order (most specific first). The
+# result feeds business rules, so it must be predictable and explainable: no
+# model decides an intent that can trigger an escalation.
+INTENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("damaged_item", re.compile(r"\b(damaged|broken|defective|cracked|torn|faulty|smashed|not working)\b")),
+    ("cancellation", re.compile(r"\b(cancel|cancell?ation|cancelled|canceled)\b")),
+    ("returns", re.compile(r"\b(return|returns|returning|refund|refunds|exchange)\b")),
+    (
+        "order_status",
+        re.compile(r"\b(where is my|track|tracking|order status|delivery status|shipped|dispatched|ord[-\s]?\d{3,})\b"),
+    ),
+]
+SUPPORTED_INTENTS = [
+    "order_status",
+    "damaged_item",
+    "cancellation",
+    "returns",
+    "talk_to_agent",
+    "knowledge_question",
+]
+
+
+def classify_intent(text: str) -> str:
+    """Keyword intent for business rules when no flow step handled the message."""
+    lowered = text.lower()
+    if detect_global_intent(text) == "talk_to_agent":
+        return "talk_to_agent"
+    for intent, pattern in INTENT_PATTERNS:
+        if pattern.search(lowered):
+            return intent
+    return "knowledge_question"
+
+
 def detect_global_intent(text: str) -> str | None:
     lowered = text.strip().lower()
     if lowered in {"restart", "start over", "reset"}:

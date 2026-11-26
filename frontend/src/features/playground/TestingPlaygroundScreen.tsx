@@ -14,6 +14,7 @@ import {
   GitFork,
   BookOpen,
   RotateCcw,
+  Scale,
   Ticket,
 } from "lucide-react";
 
@@ -175,13 +176,20 @@ export function TestingPlaygroundScreen() {
                       {/* Assistant citation pill */}
                       {!isUser && msg.responseMeta && (
                         <div className="mt-2.5 pt-2 border-t border-warm-border/60 flex flex-wrap items-center gap-2 text-[11px]">
+                          {msg.responseMeta.rule_name && (
+                            <span className="text-status-error font-medium flex items-center gap-1">
+                              <Scale className="w-3 h-3" />
+                              Business rule: {msg.responseMeta.rule_name}
+                            </span>
+                          )}
                           {msg.responseMeta.ticket_id ? (
                             <Link
                               to="/tickets"
                               className="text-aubergine font-medium flex items-center gap-1 hover:underline"
                             >
                               <Ticket className="w-3 h-3" />
-                              Human review ticket #{msg.responseMeta.ticket_id.slice(0, 8).toUpperCase()}
+                              {msg.responseMeta.action === "human_review_created" ? "Human review ticket" : "Ticket"} #
+                              {msg.responseMeta.ticket_id.slice(0, 8).toUpperCase()}
                             </Link>
                           ) : msg.responseMeta.sources.length > 0 ? (
                             <span className="text-mint-dark font-medium flex items-center gap-1">
@@ -314,9 +322,17 @@ export function TestingPlaygroundScreen() {
                     </span>
                     <div className="p-3 bg-ivory rounded-lg border border-warm-border flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {activeMeta.action === "escalate" ? (
+                        {activeMeta.rule_name && activeMeta.action !== "answer" ? (
                           <Badge variant="red" withDot>
-                            Escalated by Rule
+                            Handled by Business Rule
+                          </Badge>
+                        ) : activeMeta.action === "escalate" ? (
+                          <Badge variant="red" withDot>
+                            Escalated to Agent
+                          </Badge>
+                        ) : activeMeta.action === "human_review_created" ? (
+                          <Badge variant="red" withDot>
+                            Human Review Ticket Created
                           </Badge>
                         ) : activeMeta.fallback ? (
                           <Badge variant="amber" withDot>
@@ -358,6 +374,16 @@ export function TestingPlaygroundScreen() {
                     </div>
                   </div>
 
+                  {/* Business rule that decided this reply (runs before Gemini) */}
+                  <div className="p-3 bg-ivory rounded-lg border border-warm-border text-xs">
+                    <span className="text-slate-text font-medium block">Business Rule:</span>
+                    <span className="font-bold text-charcoal mt-1 block">
+                      {activeMeta.rule_name
+                        ? `${activeMeta.rule_name} → ${activeMeta.action}`
+                        : "No rule matched"}
+                    </span>
+                  </div>
+
                   {/* 3. Citations & Grounded Evidence */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -367,7 +393,12 @@ export function TestingPlaygroundScreen() {
                       <span className="text-[11px] text-slate-text">Max 3 citations</span>
                     </div>
 
-                    {activeMeta.sources.length === 0 ? (
+                    {activeMeta.sources.length === 0 && activeMeta.action !== "answer" ? (
+                      <div className="p-3.5 bg-ivory border border-warm-border rounded-lg text-xs text-slate-text leading-relaxed">
+                        Answered by a deterministic step (business rule, conversation flow or ticket handoff).
+                        Knowledge retrieval and Gemini were not needed.
+                      </div>
+                    ) : activeMeta.sources.length === 0 ? (
                       <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed">
                         No quoted company evidence matched this question. The assistant provided a safe fallback answer rather than inventing unverified claims.
                       </div>

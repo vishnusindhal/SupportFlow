@@ -27,6 +27,30 @@ floats and safely return non-match on invalid values.
 `set_priority` are validated literal action types. They produce deterministic
 chat responses and can offer escalation without asking Gemini to decide.
 
+## Rule context and intents
+
+Each chat message is evaluated against this context:
+
+| Field | Value |
+|---|---|
+| `message` | The customer's text (use `contains` for keywords such as `lawyer`) |
+| `intent` | `order_status`, `damaged_item`, `cancellation`, `returns`, `talk_to_agent` or `knowledge_question` |
+| `entities.order_id` | An order ID such as `ORD-1234`, remembered across the conversation |
+| `conversation.state` | The current flow state |
+
+The intent comes from a deterministic keyword classifier
+(`classify_intent` in `services/flow.py`), so rules on `intent` work even when no
+conversation flow is configured. A model never decides an intent that can
+trigger an escalation. Text comparisons ignore case, and `in` accepts a
+comma-separated list (`returns, cancellation`). The API rejects condition fields
+outside this context, and `GET /rules/options` lists the fields and intents for
+the rules form.
+
+`set_priority` does not stop the workflow: the assistant answers normally, and
+any ticket created later in the conversation gets that priority. The other
+actions reply immediately. Escalating actions create a ticket with the rule's
+priority and team. Disabled rules can be enabled again from the rules screen.
+
 ## Audit and dry run
 
 Chat execution creates `rule_execution_logs` with condition traces. The

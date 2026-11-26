@@ -69,7 +69,7 @@ def test_rule_priority_and_action_are_applied_before_gemini(client):
     response = client.post(
         f"/api/v1/chat/conversations/{conversation['id']}/messages",
         headers=auth,
-        json={"content": "What is my order status?"},
+        json={"content": "What are your store hours?"},
     )
     assert response.status_code == 200
     assert response.json()["answer"] == "Deterministic answer."

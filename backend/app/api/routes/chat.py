@@ -98,6 +98,7 @@ async def respond(conversation_id: uuid.UUID, request: MessageCreate, context: A
         action=state.get("action", "answer"),
         human_review_offered=state["human_review_offered"],
         ticket_id=state.get("ticket_id"),
+        rule_name=state.get("matched_rule_name"),
     )
 
 
