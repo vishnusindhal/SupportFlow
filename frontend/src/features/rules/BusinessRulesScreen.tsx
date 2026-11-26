@@ -320,6 +320,9 @@ export function BusinessRulesScreen() {
                     <td className="py-3.5 px-5 font-mono text-slate-text max-w-xs">
                       {rule.conditions.map((c, i) => (
                         <div key={i} className="truncate">
+                          {i > 0 && (
+                            <span className="text-coral font-bold mr-1">{rule.logic === "any" ? "OR" : "AND"}</span>
+                          )}
                           {c.field} {c.operator} <span className="text-charcoal font-bold">"{String(c.value)}"</span>
                         </div>
                       ))}
