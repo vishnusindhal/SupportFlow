@@ -1,0 +1,5 @@
+Northstar Store - Order Tracking Guide
+
+Every order has an ID in the format ORD-1234. The tracking link is sent by email and SMS when the order is dispatched.
+Order statuses are: Placed, Processing, Dispatched, Out for delivery and Delivered.
+If tracking has not updated for more than three business days, contact support with the order ID so the team can open a courier investigation.
