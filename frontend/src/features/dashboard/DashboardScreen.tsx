@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { onboardingApi } from "../../api/onboarding";
 import { knowledgeApi } from "../../api/knowledge";
 import { rulesApi } from "../../api/rules";
+import { SHOW_BUSINESS_RULES } from "../../app/featureFlags";
 import { ticketsApi } from "../../api/tickets";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -166,10 +167,12 @@ export function DashboardScreen() {
                   <Database className="w-3.5 h-3.5 text-mint-dark" />
                   {readyDocuments.length} Knowledge Sources Ready
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Scale className="w-3.5 h-3.5 text-coral" />
-                  {activeRules.length} Active Rules
-                </span>
+                {SHOW_BUSINESS_RULES && (
+                  <span className="flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5 text-coral" />
+                    {activeRules.length} Active Rules
+                  </span>
+                )}
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-lavender-dark" />
                   Timezone: {config?.company_profile?.timezone ?? "UTC"}
@@ -205,7 +208,9 @@ export function DashboardScreen() {
       </div>
 
       {/* 2. Key Operational Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className={`grid grid-cols-1 sm:grid-cols-2 ${SHOW_BUSINESS_RULES ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-4`}
+      >
         <Link to="/knowledge" className="block group">
           <Card hoverEffect className="p-5 h-full">
             <CardBody className="p-0">
@@ -240,20 +245,22 @@ export function DashboardScreen() {
           </Card>
         </Link>
 
-        <Link to="/rules" className="block group">
-          <Card hoverEffect className="p-5 h-full">
-            <CardBody className="p-0">
-              <div className="flex items-center justify-between text-slate-text mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider">Business Rules</span>
-                <Scale className="w-4 h-4 text-aubergine group-hover:scale-110 transition-transform" />
-              </div>
-              <div className="text-2xl font-bold text-charcoal">{activeRules.length} Active</div>
-              <p className="text-xs text-slate-text mt-1.5">
-                Deterministic escalation & routing rules
-              </p>
-            </CardBody>
-          </Card>
-        </Link>
+        {SHOW_BUSINESS_RULES && (
+          <Link to="/rules" className="block group">
+            <Card hoverEffect className="p-5 h-full">
+              <CardBody className="p-0">
+                <div className="flex items-center justify-between text-slate-text mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider">Business Rules</span>
+                  <Scale className="w-4 h-4 text-aubergine group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="text-2xl font-bold text-charcoal">{activeRules.length} Active</div>
+                <p className="text-xs text-slate-text mt-1.5">
+                  Deterministic escalation & routing rules
+                </p>
+              </CardBody>
+            </Card>
+          </Link>
+        )}
 
         <Link to="/settings" className="block group">
           <Card hoverEffect className="p-5 h-full">

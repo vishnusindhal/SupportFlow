@@ -12,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider";
+import { SHOW_BUSINESS_RULES } from "../../app/featureFlags";
 
 interface NavItem {
   label: string;
@@ -29,7 +30,7 @@ export function Sidebar() {
     { label: "Chat & Test Agent", href: "/playground", icon: Sparkles },
     { label: "Knowledge Base", href: "/knowledge", icon: Database },
     { label: "Tickets", href: "/tickets", icon: AlertCircle },
-    { label: "Business Rules", href: "/rules", icon: Scale },
+    ...(SHOW_BUSINESS_RULES ? [{ label: "Business Rules", href: "/rules", icon: Scale }] : []),
     { label: "Settings", href: "/settings", icon: Sliders },
   ];
 
