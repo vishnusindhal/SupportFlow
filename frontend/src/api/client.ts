@@ -16,10 +16,6 @@ export function setAccessToken(token: string | null) {
   currentAccessToken = token;
 }
 
-export function getAccessToken(): string | null {
-  return currentAccessToken;
-}
-
 // Request interceptor: add Bearer token if present
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (currentAccessToken && !config.headers.Authorization) {

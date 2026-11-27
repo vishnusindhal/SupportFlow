@@ -44,11 +44,3 @@ export function CardHeader({
 export function CardBody({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`p-5 ${className}`}>{children}</div>;
 }
-
-export function CardFooter({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={`p-4 px-5 bg-ivory-light/60 border-t border-warm-border/60 rounded-b-xl flex items-center justify-between gap-3 text-xs text-slate-text ${className}`}>
-      {children}
-    </div>
-  );
-}

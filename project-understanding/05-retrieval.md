@@ -1,45 +1,63 @@
 # Retrieval and Ranking
 
-> **Branch `feature/langchain`:** retrieval is a LangChain `BaseRetriever` with Gemini embeddings. See [15-langchain-langgraph.md](./15-langchain-langgraph.md).
+## The retriever
+
+`TenantHybridRetriever` in `backend/app/services/ai/retriever.py` is a
+LangChain `BaseRetriever`. It is used by the chat workflow (`retrieve` node)
+and by `POST /api/v1/knowledge/retrieve`, and it returns LangChain
+`Document`s with scores and an excerpt in their metadata.
 
 ## Query pipeline
 
-`POST /api/v1/knowledge/retrieve` accepts a query and optional `top_k`.
-
-1. Load only chunks belonging to the authenticated organization.
-2. Generate the same 384-dimensional query embedding.
-3. Calculate lexical overlap between query terms and chunk terms.
-4. Calculate vector similarity using the embedding dot product.
-5. Rank with:
+1. **Tenant filter first.** Load only chunks where `organization_id` matches
+   the authenticated organization. Above 2,000 chunks per tenant on
+   PostgreSQL, pgvector narrows to the 200 nearest chunks by cosine distance
+   before reranking.
+2. **Embed the query** with the same embeddings class used at ingestion.
+3. **Lexical score** (`lexical_score` in `services/knowledge.py`): share of
+   meaningful query terms (stopwords removed, plurals folded) found in the
+   chunk, plus a bonus for matching two-word phrases.
+4. **Semantic score:** cosine similarity, rescaled from the model's floor
+   (`(cosine - 0.5) / 0.5` for Gemini). Chunks embedded by a different model
+   get 0 until re-indexed.
+5. **Combine and filter:**
 
 ```text
-score = 0.7 * lexical_overlap + 0.3 * vector_similarity
+score  = (1 - w) * lexical + w * semantic
+w      = 0.5 for Gemini embeddings, 0 for hash embeddings
+usable = lexical > 0  OR  semantic >= 0.3
 ```
 
-6. Return the best chunks with source metadata and focused excerpts.
+6. Return the top `k` documents. The chat workflow asks for usable chunks only
+   and cites at most three.
 
 ## Focused excerpts
 
-`relevant_excerpt` locates the first matching query term and returns a bounded
-window of roughly 45 words around it. If no term is found, the chunk is
-returned. This prevents a question about one project from displaying an entire
-resume or document.
+`relevant_excerpt` slides a 45-word window over the chunk, picks the window
+with the most query terms, and centers it on the matches. Citations show this
+passage instead of the whole chunk.
+
+## Failure behavior
+
+If the embedding API fails at query time, the `retrieve` node swaps in
+`HashEmbeddings`, which turns retrieval into word matching only. Chat keeps
+working with lower recall.
 
 ## Why hybrid ranking
 
-Lexical overlap handles exact names such as `Eventopia` and order IDs well.
-Vector similarity helps when the query and source use related wording. The
-weighted combination is simple, explainable, and suitable for the prototype.
+Lexical overlap handles exact names, order IDs and policy terms. Semantic
+similarity finds chunks that use different words ("send it back" vs
+"return"). The weighted combination is simple, explainable and testable.
 
 ## Production improvements
 
-Use a real embedding model, PostgreSQL vector indexes, metadata filters,
-reranking, document versioning, chunk quality evaluation, and retrieval
-precision/recall metrics. Keep the organization filter outside the model and
-apply it before ranking.
+Add an HNSW/IVFFlat index for large tenants, a cross-encoder reranker,
+metadata filters (document type, date), and retrieval metrics (Recall@k, MRR)
+on the evaluation set. See [16-evaluation-metrics.md](./16-evaluation-metrics.md).
 
 ## Manual check
 
-Upload a document containing a unique project name, search for that name, and
-verify that the response contains only the focused passage and source
-filename. Repeat with a second tenant to verify isolation.
+Upload a document containing a unique phrase, query it in **Knowledge base →
+Test retrieval**, and verify that the result shows the focused passage and
+source filename. Repeat under a second organization and verify the result list
+is empty.

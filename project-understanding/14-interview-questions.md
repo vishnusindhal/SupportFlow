@@ -1,5 +1,11 @@
 # Interview Questions and Answers
 
+## Why LangGraph instead of one function or a prebuilt agent?
+
+Each step is a small node with typed state, and every branch is an explicit
+edge. The model is used in two nodes only and never chooses an action, tool,
+permission or tenant, which keeps the workflow auditable and testable.
+
 ## Why is tenant isolation implemented in the backend?
 
 The browser is untrusted. The backend derives organization context from the
@@ -15,10 +21,12 @@ must decide whether an action is allowed.
 
 ## How is a document question answered?
 
-The query is embedded and ranked against tenant-owned chunks. The top usable
-excerpts are placed into a constrained prompt. Gemini answers from those
-excerpts, and the response stores source citations. Without evidence, the
-system returns a safe fallback instead of guessing.
+The LangGraph workflow first runs intent detection and business rules. If
+neither handles the message, `condense_question` rewrites a follow-up into a
+standalone question, `TenantHybridRetriever` ranks tenant-owned chunks, and
+the `generate` node asks Gemini for a structured `GroundedAnswer` from the top
+three excerpts. Only the cited sources are returned. Without evidence, the
+system offers a human review instead of guessing.
 
 ## Why hybrid lexical and vector retrieval?
 
@@ -28,9 +36,10 @@ the prototype.
 
 ## What happens if Gemini is unavailable?
 
-The provider adapter raises a typed `ProviderError`. The chat route records a
-provider fallback and tells the user that relevant company information exists
-but a human should answer. The API does not silently pretend the model worked.
+Every model call is wrapped at the node boundary. The rewrite falls back to
+the original question, query embedding falls back to word search, and a failed
+answer becomes `provider_fallback` with a human-review offer. The outcome is
+recorded in `llm_usage`. No step returns an invented answer.
 
 ## How are refresh tokens secured?
 
@@ -45,8 +54,8 @@ only the supported data/operators. JSON does not mean arbitrary code execution.
 
 ## What would you improve for production?
 
-Add background ingestion, object storage, virus scanning, real embeddings and
-vector indexes, persistent browser session restoration, rate limiting,
+Add background ingestion, object storage, virus scanning, vector indexes and a
+reranker, an evaluation pipeline, persistent browser session restoration, rate limiting,
 observability, secret management, provider retries/circuit breakers,
 pagination, stronger accessibility, and CI/CD security scanning.
 

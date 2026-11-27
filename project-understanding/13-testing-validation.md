@@ -8,8 +8,17 @@
 - `test_onboarding.py`: templates, profiles, and completion.
 - `test_knowledge.py`: uploads, parsing, chunking, retrieval, and isolation.
 - `test_chat.py`: grounded chat, fallbacks, and persistence.
+- `test_chat_memory.py`: follow-up rewriting, entity carry-over, human-review offer.
+- `test_langgraph.py`: graph structure, semantic retrieval, retriever tenant
+  isolation, rules before any model call, provider and rewrite failures.
 - `test_flows.py`: state transitions, global intents, and entities.
 - `test_rules.py`: operators, priority, dry run, malicious input, and rules.
+- `test_rules_in_chat.py`: keyword intent classifier, rules firing in chat
+  without a configured flow, `set_priority`, and rule options.
+- `test_tickets.py`: ticket lifecycle, comments, escalation, and isolation.
+
+Tests run offline: model calls are replaced by fake chains and
+`EMBEDDING_PROVIDER=hash` is used, so no Gemini key is needed.
 
 ## Commands
 
@@ -22,9 +31,11 @@ docker compose config --quiet
 docker compose exec -T backend alembic current
 ```
 
-The validated V6 baseline was 23 backend tests passing, Ruff passing, Compose
-configuration passing, migration head `0006_v6_rules`, frontend lint passing,
-and the production build passing.
+Current baseline (2026-11-27): 62 backend tests passing, Ruff passing,
+migration head `0007_v7_tickets`, frontend lint and production build passing.
+
+Against a running stack, `python demo-inputs/e2e_check.py http://localhost:8000`
+runs the end-to-end check.
 
 ## What the tests protect
 
@@ -44,3 +55,9 @@ current suite but should be addressed before production hardening.
 Automated tests prove repeatable behavior. Manual checks prove the complete
 browser/API journey: login, onboarding, upload, retrieval, chat, and rule
 execution. Both are documented in the version files.
+
+## Evaluation metrics and latency
+
+Evaluation metrics and the measured query latency (about 1.7 s median for a
+full chat answer, 0.55 s for retrieval alone) are in
+[16-evaluation-metrics.md](./16-evaluation-metrics.md).

@@ -153,29 +153,6 @@ export interface ChatMessage {
   created_at?: string;
 }
 
-export interface FlowOption {
-  label: string;
-  next_state: string;
-}
-
-export interface FlowState {
-  prompt: string;
-  options: Record<string, FlowOption>;
-  terminal?: boolean;
-}
-
-export interface FlowConfig {
-  version: number;
-  initial_state: string;
-  states: Record<string, FlowState>;
-}
-
-export interface FlowResponse {
-  version: number;
-  flow: FlowConfig | null;
-  updated_at?: string;
-}
-
 export type RuleOperator = "equals" | "not_equals" | "greater_than" | "less_than" | "contains" | "in";
 export type RuleActionType = "escalate" | "require_approval" | "route_to_team" | "auto_respond" | "set_priority";
 

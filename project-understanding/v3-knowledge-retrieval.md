@@ -1,5 +1,10 @@
 # V3 Knowledge Base and Retrieval
 
+> **Current implementation:** ingestion and retrieval were later moved to LangChain
+> (`RecursiveCharacterTextSplitter`, Gemini embeddings, `TenantHybridRetriever`).
+> This file records V3 as it was built. See [04](./04-knowledge-ingestion.md),
+> [05](./05-retrieval.md) and [15](./15-langchain-langgraph.md).
+
 ## Goal
 
 V3 turned private company documents into tenant-scoped searchable knowledge.

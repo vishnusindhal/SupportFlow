@@ -14,11 +14,15 @@
 | Route | Screen |
 |---|---|
 | `/login` | Demo registration/login |
-| `/` | Protected dashboard shell |
+| `/` | Dashboard |
 | `/onboarding` | Company profile and template setup |
 | `/knowledge` | Upload, document list, and retrieval test |
-| `/chat` | Grounded admin chat preview |
-| `/rules` | Create/list/disable escalation rules |
+| `/playground` | Chat & Test Agent: one conversation with memory, sources, rule and ticket details |
+| `/tickets` | Ticket list, detail, status/priority updates, internal comments |
+| `/rules` | Business rules (hidden from navigation by `SHOW_BUSINESS_RULES` in `app/featureFlags.ts`; the page still works) |
+| `/settings` | Organization settings |
+
+Any other path redirects to `/`.
 
 ## Session behavior
 

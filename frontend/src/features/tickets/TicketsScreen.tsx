@@ -362,7 +362,7 @@ export function TicketsScreen() {
                   <span className="text-slate-text">
                     Linked to Conversation: <span className="font-mono text-charcoal">{selectedTicket.conversation_id.slice(0, 8)}...</span>
                   </span>
-                  <Link to="/conversations" className="text-coral hover:underline font-semibold flex items-center gap-1">
+                  <Link to="/playground" className="text-coral hover:underline font-semibold flex items-center gap-1">
                     <MessageSquare className="w-3 h-3" /> View Transcript
                   </Link>
                 </div>

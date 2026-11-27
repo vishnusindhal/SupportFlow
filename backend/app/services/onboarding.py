@@ -1,5 +1,4 @@
 import copy
-import re
 import uuid
 
 from fastapi import HTTPException, status
@@ -22,10 +21,6 @@ def validate_template_config(config: dict) -> dict:
     if not isinstance(config["menu"], dict) or not isinstance(config["assistant"], dict):
         raise TypeError("Template menu and assistant settings must be objects")
     return config
-
-
-def template_slug(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
 
 
 def get_active_templates(db: Session) -> list[IndustryTemplate]:

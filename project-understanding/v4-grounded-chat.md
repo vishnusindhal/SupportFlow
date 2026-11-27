@@ -1,5 +1,9 @@
 # V4 Grounded Gemini Chat
 
+> **Current implementation:** the chat pipeline was later moved to a LangGraph
+> workflow with LangChain chains and structured output. This file records V4 as
+> it was built. See [06](./06-chat-and-gemini.md) and [15](./15-langchain-langgraph.md).
+
 ## Goal
 
 V4 added tenant-scoped conversations and controlled Gemini answers grounded in

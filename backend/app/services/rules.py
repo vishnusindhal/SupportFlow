@@ -1,14 +1,6 @@
-from dataclasses import dataclass
 from typing import Any
 
-from app.schemas.rules import RuleAction, RuleCondition
-
-
-@dataclass(frozen=True)
-class RuleResult:
-    matched: bool
-    trace: list[dict[str, Any]]
-    action: RuleAction | None = None
+from app.schemas.rules import RuleCondition
 
 
 def _value(context: dict[str, Any], field: str) -> Any:

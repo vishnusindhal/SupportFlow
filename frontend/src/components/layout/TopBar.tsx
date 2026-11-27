@@ -14,17 +14,17 @@ export function TopBar({ onOpenMobileMenu, agentReady = true }: TopBarProps) {
     switch (true) {
       case path === "/":
         return { section: "SupportFlow", title: "Dashboard" };
-      case path.startsWith("/playground") || path.startsWith("/chat") || path.startsWith("/conversations"):
+      case path.startsWith("/playground"):
         return { section: "AI Agent", title: "Chat & Test Agent" };
       case path.startsWith("/knowledge"):
         return { section: "AI Agent", title: "Knowledge Base" };
-      case path.startsWith("/tickets") || path.startsWith("/customers"):
+      case path.startsWith("/tickets"):
         return { section: "Support", title: "Tickets & Escalations" };
-      case path.startsWith("/rules") || path.startsWith("/flows"):
+      case path.startsWith("/rules"):
         return { section: "Automation", title: "Business Rules" };
       case path.startsWith("/onboarding"):
         return { section: "Setup", title: "Company Onboarding" };
-      case path.startsWith("/settings") || path.startsWith("/agent"):
+      case path.startsWith("/settings"):
         return { section: "Settings", title: "Organization Settings" };
       default:
         return { section: "SupportFlow", title: "Console" };
@@ -76,9 +76,7 @@ export function TopBar({ onOpenMobileMenu, agentReady = true }: TopBarProps) {
         </div>
 
         {/* Test Agent shortcut CTA */}
-        {location.pathname !== "/playground" &&
-          location.pathname !== "/chat" &&
-          location.pathname !== "/conversations" && (
+        {location.pathname !== "/playground" && (
             <Link to="/playground">
               <Button
                 variant="primary"

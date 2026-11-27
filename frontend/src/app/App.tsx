@@ -31,15 +31,6 @@ export default function App() {
             <Route path="/rules" element={<BusinessRulesScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="/onboarding" element={<OnboardingScreen />} />
-
-            {/* Clean Redirects for simplified navigation */}
-            <Route path="/dashboard" element={<Navigate to="/" replace />} />
-            <Route path="/chat" element={<Navigate to="/playground" replace />} />
-            <Route path="/conversations" element={<Navigate to="/playground" replace />} />
-            <Route path="/customers" element={<Navigate to="/tickets" replace />} />
-            <Route path="/analytics" element={<Navigate to="/" replace />} />
-            <Route path="/agent" element={<Navigate to="/settings" replace />} />
-            <Route path="/flows" element={<Navigate to="/rules" replace />} />
           </Route>
         </Route>
 

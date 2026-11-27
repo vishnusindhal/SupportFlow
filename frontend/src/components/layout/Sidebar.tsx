@@ -77,8 +77,7 @@ export function Sidebar() {
             const isActive =
               item.href === "/"
                 ? currentPath === "/"
-                : currentPath.startsWith(item.href) ||
-                  (item.href === "/playground" && (currentPath === "/chat" || currentPath === "/conversations"));
+                : currentPath.startsWith(item.href);
 
             return (
               <Link

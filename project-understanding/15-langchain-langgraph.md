@@ -1,10 +1,11 @@
 # LangChain RAG and the LangGraph Support Workflow
 
-Branch: `feature/langchain`. `main` keeps the earlier hand-written pipeline.
+This is the current AI architecture. It replaced an earlier hand-written
+pipeline; the table below shows what changed.
 
 ## What changed
 
-| Area | Before (main) | Now (LangChain / LangGraph) |
+| Area | Before (hand-written) | Now (LangChain / LangGraph) |
 |---|---|---|
 | Chat pipeline | One long `respond()` function | `StateGraph` with 12 typed nodes and conditional edges (`backend/app/services/ai/graph.py`) |
 | Model calls | Direct `httpx` call to Gemini REST | `ChatGoogleGenerativeAI` in two LCEL chains (`chains.py`) |

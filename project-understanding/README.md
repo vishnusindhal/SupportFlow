@@ -10,9 +10,10 @@ original specification.
 
 1. [Interview roadmap](./00-interview-roadmap.md)
 2. [System architecture](./01-system-architecture.md)
-3. [V0–V6 implementation history](#version-files)
-4. Feature files for the areas the interviewer asks about
-5. [Interview questions and answers](./14-interview-questions.md)
+3. [LangChain and LangGraph architecture](./15-langchain-langgraph.md)
+4. [V0–V7 implementation history](#version-files)
+5. Feature files for the area you are working on
+6. [Interview questions and answers](./14-interview-questions.md)
 
 ## Version files
 
@@ -39,7 +40,7 @@ chronological order.
 | Templates and onboarding | [03-onboarding-configuration.md](./03-onboarding-configuration.md) |
 | File ingestion and document processing | [04-knowledge-ingestion.md](./04-knowledge-ingestion.md) |
 | Retrieval and ranking | [05-retrieval.md](./05-retrieval.md) |
-| Conversations and Gemini provider | [06-chat-and-gemini.md](./06-chat-and-gemini.md) |
+| Conversations, Gemini and memory | [06-chat-and-gemini.md](./06-chat-and-gemini.md) |
 | Conversation state machine | [07-conversation-flows.md](./07-conversation-flows.md) |
 | Deterministic rules | [08-business-rules.md](./08-business-rules.md) |
 | React frontend | [09-frontend.md](./09-frontend.md) |
@@ -49,6 +50,7 @@ chronological order.
 | Tests and validation | [13-testing-validation.md](./13-testing-validation.md) |
 | Interview preparation | [14-interview-questions.md](./14-interview-questions.md) |
 | LangChain RAG and LangGraph workflow | [15-langchain-langgraph.md](./15-langchain-langgraph.md) |
+| Evaluation metrics and query latency | [16-evaluation-metrics.md](./16-evaluation-metrics.md) |
 
 Every version and feature document includes purpose, implementation details,
 request flow, source locations, validation, manual checks, trade-offs, and

@@ -21,11 +21,12 @@ backend, and the frontend locally.
    membership in the access token context.
 2. **Setup:** V2 exposes a versioned template and creates an immutable company
    configuration snapshot.
-3. **Knowledge:** V3 validates an upload, extracts text, creates overlapping
-   chunks, generates deterministic 384-dimensional embeddings, and ranks
-   tenant-owned chunks.
-4. **Chat:** V4 persists conversations and messages, retrieves evidence, and
-   calls Gemini through a provider adapter only when evidence exists.
+3. **Knowledge:** an upload is loaded into LangChain `Document`s, split with
+   `RecursiveCharacterTextSplitter`, embedded with Gemini (384 dimensions),
+   and ranked by a tenant-scoped hybrid `BaseRetriever`.
+4. **Chat:** a LangGraph `StateGraph` runs intent, rules, question rewriting,
+   retrieval and a structured-output Gemini answer, and calls Gemini only when
+   evidence exists.
 5. **Control:** V5 handles menu/global intents deterministically. V6 evaluates
    typed rules in priority order before any model call.
 6. **Fallback:** Missing evidence and provider failure produce explicit safe
@@ -51,7 +52,7 @@ backend, and the frontend locally.
 3. Complete **Onboarding**.
 4. Upload a small `.txt` document in **Knowledge base**.
 5. Retrieve a phrase from the document.
-6. Ask the same question in **Chat preview**.
+6. Ask the same question in **Chat & Test Agent**.
 7. Create an escalation rule in **Rules**.
 8. Ask an order-status question and show that the deterministic rule runs
    before Gemini.
